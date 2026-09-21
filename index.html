@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><style data-merge-styles="true"></style>
+    
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Control de Glucosa · Anthony Rostron</title>
     <script>
@@ -5328,7 +5329,11 @@
             let medicineCatalog = [];
             let medicineCatalogLoaded = false;
 
-            const HIPO_KEYWORDS = ["sulfonilurea", "meglitinida", "insulina"];
+            // Insulinas, sulfonilureas y glinidas. Los datos de la API de CIMA no traen esas etiquetas de clase:
+            // el ATC dice "Sulfonamidas, derivados de la urea" y los principios activos son glibenclamida, etc.
+            const HIPO_KEYWORDS = ["sulfonilurea", "meglitinida", "insulina", "derivados de la urea",
+                "glibenclamida", "gliclazida", "glimepirida", "glipizida", "gliquidona", "tolbutamida",
+                "clorpropamida", "repaglinida", "nateglinida"];
 
             const COMMON_UNITS = ['mg', 'g', 'mcg', 'ml', 'UI', 'IU', 'U', 'tableta', 'tabletas', 'capsula', 'capsulas', 'gota', 'gotas', 'puff', 'parche', 'sobre', 'aplicacion'];
 
@@ -5373,7 +5378,7 @@
                     m.dosis,
                     m.strength,
                     m.concentracion,
-                    ...(m.principios_activos || []).flatMap(p => [p.cantidad, p.dosis])
+                    ...(m.principios_activos || m.principiosActivos || []).flatMap(p => [p.cantidad, p.dosis])
                 ].filter(Boolean).join(" / ");
 
                 const re = /(\d+(?:[.,]\d+)?)\s*(mg|g|mcg|µg|ug|ng|ml|mL|UI|IU|U|%)(?:\b|(?=\s|\/|$))/gi;
@@ -5399,8 +5404,8 @@
 
                 return list.map((m, i) => {
                     const pas = m.principios_activos || m.principiosActivos || [];
-                    const atcs = m.atc || [];
-                    const vias = m.via_administracion || m.viaAdministracion || [];
+                    const atcs = m.atc || m.atcs || [];
+                    const vias = m.via_administracion || m.viaAdministracion || m.viasAdministracion || [];
 
                     const principios = pas.map(p => p.nombre || p.nombrePrincipioActivo || p.principioActivo || "").filter(Boolean).join(" / ");
                     const unidadRaw = pas[0] && (pas[0].unidad || pas[0].unidadDosis) || m.unidad || "";
@@ -5408,8 +5413,11 @@
                     const atcNames = (Array.isArray(atcs) ? atcs : [atcs]).map(a => typeof a === "string" ? a : (a && (a.nombre || a.descripcion) || "")).join(" ");
                     const nombre = m.nombre || m.nombre_comercial || m.nombreComercial || "Medicamento";
                     const marcas = m.marcas || m.nombre_comercial || m.nombreComercial || nombre;
-                    const laboratorio = m.laboratorio || m.titular || "—";
-                    const clase = (atcs[0] && (atcs[0].nombre || atcs[0].descripcion)) || m.clase || "—";
+                    const laboratorio = m.laboratorio || m.titular || m.labtitular || "—";
+                    // La API devuelve todos los niveles del ATC (A, A10, A10B, A10BA...): la clase es el nivel 4
+                    // (p. ej. "Biguanidas"). En el JSON local no hay niveles y se usa el primero.
+                    const atcClase = atcs.find(a => a && a.nivel === 4) || atcs[0];
+                    const clase = (atcClase && (atcClase.nombre || atcClase.descripcion)) || m.clase || "—";
                     const riesgoText = (atcNames + " " + principios).toLowerCase();
                     const riesgo = HIPO_KEYWORDS.some(k => riesgoText.includes(k));
 
@@ -5449,51 +5457,120 @@
             }
 
             // Origen del catalogo CIMA al iniciar:
-            // 1) Descarga desde la URL en linea (siempre la version mas reciente).
-            // 2) Si falla, el archivo cima-diabetes.json que esta en el mismo directorio que esta pagina.
+            // 1) Descarga de una copia nueva desde la API oficial de CIMA (AEMPS).
+            // 2) SOLO si esa descarga falla: el archivo cima-diabetes.json del mismo directorio.
             // Si ambos fallan, "Recargar catalogo" reintenta y "Seleccionar archivo manualmente"
             // permite elegir el JSON a mano.
-            const MEDICINE_CIMA_REMOTE_URL = "https://anthonyrostron.neocities.org/cima-diabetes.json";
-            async function tryFetchMedicineCatalog(url) {
-                // Peticion GET "simple": sin cabeceras ni opciones que fuercen un preflight CORS.
-                // (Con cache: "no-store" el navegador anade Cache-Control/Pragma, que no son
-                // cabeceras seguras de CORS, y desde un origen file:// la peticion fallaba con
-                // "Failed to fetch" aunque el servidor permita CORS en los GET normales.)
-                const response = await fetch(url);
-                if (!response.ok) throw new Error("HTTP " + response.status);
-                const raw = await response.json();
+            const CIMA_API_BASE = "https://cima.aemps.es/cima/rest/";
+            const CIMA_ATC_FILTER = "A10"; // A10: farmacos usados en la diabetes
+            const CIMA_CONCURRENCY = 8;
+
+            // Peticion GET "simple" (sin cabeceras ni cache: "no-store"): no provoca preflight CORS.
+            async function cimaGetJson(path, params) {
+                const controller = new AbortController();
+                const timer = setTimeout(() => controller.abort(), 20000);
+                try {
+                    const response = await fetch(CIMA_API_BASE + path + "?" + new URLSearchParams(params).toString(),
+                        { signal: controller.signal });
+                    if (!response.ok) throw new Error("HTTP " + response.status);
+                    return await response.json();
+                } finally {
+                    clearTimeout(timer);
+                }
+            }
+
+            // map con concurrencia limitada que conserva el orden
+            async function mapWithConcurrency(items, limit, fn) {
+                const results = new Array(items.length);
+                let next = 0;
+                async function worker() {
+                    while (next < items.length) {
+                        const i = next++;
+                        results[i] = await fn(items[i], i);
+                    }
+                }
+                await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+                return results;
+            }
+
+            function applyMedicineCatalog(raw) {
                 const normalized = normalizeFullMedicineDataset(raw);
-                if (!normalized.length) throw new Error("El JSON no contiene medicamentos reconocibles.");
+                if (!normalized.length) throw new Error("Los datos no contienen medicamentos reconocibles.");
                 medicineCatalog = normalized;
                 medicineCatalogLoaded = true;
                 updateMedCatalogStatus();
                 renderMedicineCatalog();
             }
 
-            async function loadMedicineCatalogAuto() {
-                // 1) Descarga en linea
-                updateMedCatalogStatus('CIMA: descargando catalogo...');
-                try {
-                    // El parametro evita que el navegador sirva una copia antigua de la cache.
-                    await tryFetchMedicineCatalog(MEDICINE_CIMA_REMOTE_URL + '?v=' + Date.now());
-                    return;
-                } catch (e) {
-                    console.warn('No se pudo descargar el catalogo CIMA en linea (' + MEDICINE_CIMA_REMOTE_URL + '):', e);
+            async function tryFetchMedicineCatalog(url) {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error("HTTP " + response.status);
+                applyMedicineCatalog(await response.json());
+            }
+
+            // Descarga el listado de medicamentos comercializados con ATC A10 y, para cada uno, su ficha
+            // (principios activos con cantidad, ATC, vias). Si la ficha de alguno falla, se usa su
+            // entrada del listado (nombre, laboratorio, dosis y via).
+            async function downloadMedicineCatalogFromCima() {
+                const query = { atc: CIMA_ATC_FILTER, comerc: 1, autorizados: 1 };
+                const first = await cimaGetJson("medicamentos", Object.assign({ pagina: 1 }, query));
+                const list = Array.isArray(first.resultados) ? first.resultados.slice() : [];
+                if (!list.length) throw new Error("CIMA no devolvio medicamentos.");
+                const perPage = list.length;
+                const pages = Math.min(Math.ceil((first.totalFilas || perPage) / perPage), 80);
+                const pageNumbers = [];
+                for (let p = 2; p <= pages; p++) pageNumbers.push(p);
+                updateMedCatalogStatus("CIMA: descargando listado (" + pages + " paginas)...");
+                const extra = await mapWithConcurrency(pageNumbers, CIMA_CONCURRENCY, p =>
+                    cimaGetJson("medicamentos", Object.assign({ pagina: p }, query)));
+                for (const page of extra) if (page && Array.isArray(page.resultados)) list.push(...page.resultados);
+
+                const unique = [];
+                const seen = new Set();
+                for (const m of list) {
+                    if (m && m.nregistro && !seen.has(m.nregistro)) { seen.add(m.nregistro); unique.push(m); }
                 }
 
-                // 2) Archivo local en el mismo directorio. Si la pagina se abrio con doble clic
-                //    (file://), el navegador no permite que una pagina lea otros archivos locales
-                //    con fetch(), asi que se avisa en vez de intentarlo en vano.
-                if (window.location.protocol === 'file:') {
+                let done = 0;
+                const detailed = await mapWithConcurrency(unique, CIMA_CONCURRENCY, async (item) => {
+                    let out = item;
+                    try {
+                        const d = await cimaGetJson("medicamento", { nregistro: item.nregistro });
+                        if (d && d.nregistro) out = d;
+                    } catch (e) { /* se conserva la entrada del listado */ }
+                    done++;
+                    if (done % 10 === 0 || done === unique.length) {
+                        updateMedCatalogStatus("CIMA: descargando fichas " + done + "/" + unique.length + "...");
+                    }
+                    return out;
+                });
+                applyMedicineCatalog(detailed);
+            }
+
+            async function loadMedicineCatalogAuto() {
+                // 1) Copia nueva desde CIMA
+                updateMedCatalogStatus("CIMA: descargando una copia nueva...");
+                try {
+                    await downloadMedicineCatalogFromCima();
+                    toast("Catalogo CIMA actualizado: " + medicineCatalog.length + " medicamentos", "success");
+                    return;
+                } catch (e) {
+                    console.warn("No se pudo descargar el catalogo desde CIMA (" + CIMA_API_BASE + "):", e);
+                }
+
+                // 2) Solo ahora, el archivo local en el mismo directorio. Si la pagina se abrio con
+                //    doble clic (file://), el navegador no permite leer otros archivos locales con
+                //    fetch(), asi que se avisa en vez de intentarlo en vano.
+                if (window.location.protocol === "file:") {
                     updateMedCatalogStatus('CIMA: la descarga ha fallado y, al abrir la pagina como archivo (file://), el navegador no deja leer cima-diabetes.json automaticamente. Pulsa "Seleccionar archivo manualmente" o abre la pagina desde un servidor (http://).');
                     return;
                 }
-                updateMedCatalogStatus('CIMA: la descarga ha fallado, usando cima-diabetes.json del directorio local...');
+                updateMedCatalogStatus("CIMA: la descarga ha fallado, usando cima-diabetes.json del directorio local...");
                 try {
                     await tryFetchMedicineCatalog(MEDICINE_CIMA_JSON);
                     return;
                 } catch (e) {
-                    console.warn('No se pudo cargar cima-diabetes.json del directorio local:', e);
+                    console.warn("No se pudo cargar cima-diabetes.json del directorio local:", e);
                 }
 
                 updateMedCatalogStatus('No se pudo cargar el catalogo CIMA (ni en linea ni local). Pulsa "Recargar catalogo" o selecciona el archivo manualmente.');
