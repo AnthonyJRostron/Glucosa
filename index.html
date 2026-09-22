@@ -9,7 +9,12 @@
         }
     </script>
     <script>
-
+        /* ===== Proteccion basica anti-copia (disuasoria) =====
+           Bloquea las vias habituales del usuario casual: clic derecho, seleccion/copia
+           fuera de los campos de formulario, atajos de guardado / ver codigo fuente /
+           herramientas de desarrollo, F12 y arrastrar elementos. Los campos de texto
+           siguen funcionando con normalidad (escribir, pegar, seleccionar).
+           Para desactivarla: PROTECTION.enabled = false (o borrar este bloque). */
         (function () {
             'use strict';
             const PROTECTION = window.PROTECTION = {
@@ -4614,33 +4619,73 @@
 
     <!-- ========== SIN DATOS DE PACIENTE (primer uso / sin datos guardados) ========== -->
     <div class="fullscreen-modal-overlay closed" id="noPatientDataModal">
-        <div class="fullscreen-modal-box">
-            <div id="noPatientDataStepChoice">
-                <h2>Sin datos de paciente</h2>
+        <div class="fullscreen-modal-box" style="max-width:560px;">
+
+            <!-- Paso 0: rol -->
+            <div id="noPatientDataStepRole">
+                <h2>Antes de empezar</h2>
                 <p style="color:#4a5568;font-size:0.95rem;margin:6px 0 16px;">
-                    No se encontraron pacientes guardados en este navegador. ¿Que quieres hacer?
+                    No se encontraron pacientes guardados en este navegador. ¿Como quieres continuar?
                 </p>
                 <div style="display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;">
-                    <button class="btn btn-outline btn-sm" id="showSampleDataInfoBtn" type="button">Ver datos de ejemplo</button>
-                    <button class="btn btn-primary btn-sm" id="addNewPatientFromPromptBtn" type="button">+ Anadir nuevo paciente</button>
+                    <button class="btn btn-outline btn-sm" id="rolePatientBtn" type="button">Soy paciente</button>
+                    <button class="btn btn-primary btn-sm" id="roleClinicianBtn" type="button">Soy profesional de la salud</button>
                 </div>
             </div>
-            <div id="noPatientDataStepSample" style="display:none;">
-                <h2>Datos de ejemplo (paciente ficticia)</h2>
-                <p style="color:#4a5568;font-size:0.95rem;margin:6px 0 12px;">
-                    Estos datos <strong>no corresponden a ningun paciente real</strong>. Son un caso ficticio
-                    (con lecturas de glucosa, estado de animo, ejercicio, etc. ya rellenados) pensado unicamente
-                    para que el <strong>personal clinico pueda familiarizarse</strong> con el funcionamiento de la
-                    aplicacion antes de usarla con un paciente real.
-                </p>
-                <p style="color:#4a5568;font-size:0.95rem;margin:0 0 16px;">
-                    Si continuas, se cargaran en este navegador. Podras borrarlos en cualquier momento con el
-                    boton "Borrar todos los datos" antes de empezar a usar la aplicacion con un paciente de
-                    verdad.
+
+            <!-- Paso 1: elegir accion (solo profesionales) -->
+            <div id="noPatientDataStepChoice" style="display:none;">
+                <h2>Sin datos de paciente</h2>
+                <p style="color:#4a5568;font-size:0.95rem;margin:6px 0 16px;">
+                    ¿Que quieres hacer?
                 </p>
                 <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+                    <button class="btn btn-outline btn-sm" id="backToRoleBtn" type="button">Atras</button>
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                        <button class="btn btn-outline btn-sm" id="showSampleDataInfoBtn" type="button">Ver datos de ejemplo</button>
+                        <button class="btn btn-primary btn-sm" id="addNewPatientFromPromptBtn" type="button">+ Anadir nuevo paciente</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Paso 2: confirmacion e informacion detallada de los datos de ejemplo -->
+            <div id="noPatientDataStepSample" style="display:none;">
+                <h2>Datos de ejemplo: 5 pacientes ficticios</h2>
+                <div style="max-height:52vh;overflow-y:auto;padding-right:6px;margin:6px 0 14px;color:#4a5568;font-size:0.92rem;line-height:1.5;">
+                    <p>
+                        <strong>Ninguno de estos pacientes es real.</strong> Son 5 casos ficticios, cada uno con
+                        <strong>365 dias de registros</strong> (mediciones de glucosa, animo, ejercicio, contexto
+                        dietetico...), pensados para que el <strong>personal clinico se familiarice</strong> con la
+                        aplicacion (tabla de registros, graficos, panel de adherencia, comparaciones estadisticas,
+                        informes en PDF) antes de usarla con un paciente real.
+                    </p>
+                    <ul style="margin:0 0 12px;padding-left:20px;">
+                        <li><strong>Carlos Alberto Fernandez Lopez</strong> — adherencia muy baja al plan (caso principal, el mas indicado para empezar).</li>
+                        <li><strong>Ana Maria Torres Gil</strong> — fenomeno del alba, con buena adherencia general.</li>
+                        <li><strong>Javier Manuel Ortega Diaz</strong> — control razonablemente bueno, con desviaciones ocasionales de todo tipo.</li>
+                        <li><strong>Laura Isabel Mendez Ruiz</strong> — historial de hipoglucemias que llevo a reducir su dosis de insulina.</li>
+                        <li><strong>Pablo Andres Molina Vega</strong> — variabilidad glucemica ligada al ejercicio.</li>
+                    </ul>
+                    <p>
+                        Los valores se generaron de forma simulada: las comidas atipicas (familiares, restaurante,
+                        comida rapida, eventos, exceso de cantidad) elevan la glucosa posterior, y el alcohol o
+                        saltarse una comida reducen la previa o la nocturna — para poder mostrar contrastes claros en
+                        el panel de adherencia y en comparaciones como Kruskal-Wallis. <strong>No representan una
+                        relacion causa-efecto medica exacta caso por caso</strong>, es un conjunto con fines
+                        demostrativos.
+                    </p>
+                    <p>
+                        Las fechas se ajustaran automaticamente al cargarlas, de modo que el ultimo dia del historial
+                        coincida siempre con la fecha de hoy (se conservan las mismas distancias entre fechas).
+                    </p>
+                    <p style="margin-bottom:0;">
+                        Podras borrar estos datos en cualquier momento con el boton "Borrar todos los datos" antes de
+                        empezar a usar la aplicacion con un paciente de verdad.
+                    </p>
+                </div>
+                <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;">
                     <button class="btn btn-outline btn-sm" id="backToNoPatientChoiceBtn" type="button">Atras</button>
-                    <button class="btn btn-primary btn-sm" id="loadSampleDataBtn" type="button">Si, cargar datos de ejemplo</button>
+                    <button class="btn btn-primary btn-sm" id="loadSampleDataBtn" type="button">Si, cargar los 5 pacientes de ejemplo</button>
                 </div>
             </div>
         </div>
@@ -5143,8 +5188,12 @@
             const missingDaysList = $('missingDaysList');
             const missingDaysCloseBtn = $('missingDaysCloseBtn');
             const noPatientDataModal = $('noPatientDataModal');
+            const noPatientDataStepRole = $('noPatientDataStepRole');
             const noPatientDataStepChoice = $('noPatientDataStepChoice');
             const noPatientDataStepSample = $('noPatientDataStepSample');
+            const rolePatientBtn = $('rolePatientBtn');
+            const roleClinicianBtn = $('roleClinicianBtn');
+            const backToRoleBtn = $('backToRoleBtn');
             const showSampleDataInfoBtn = $('showSampleDataInfoBtn');
             const backToNoPatientChoiceBtn = $('backToNoPatientChoiceBtn');
             const loadSampleDataBtn = $('loadSampleDataBtn');
@@ -9223,6 +9272,43 @@ function addMedicationLog(medId, omitida) {
                 toast('Nuevo paciente creado', 'success');
             }
 
+            // Suma (o resta) un numero de dias a una fecha 'YYYY-MM-DD', en UTC para
+            // evitar problemas con el huso horario local.
+            function shiftDateStr(dateStr, days) {
+                if (!dateStr || !days) return dateStr;
+                const d = new Date(dateStr + 'T00:00:00Z');
+                if (isNaN(d.getTime())) return dateStr;
+                d.setUTCDate(d.getUTCDate() + days);
+                return d.toISOString().slice(0, 10);
+            }
+
+            function daysBetweenDateStrs(fromStr, toStr) {
+                const a = new Date(fromStr + 'T00:00:00Z');
+                const b = new Date(toStr + 'T00:00:00Z');
+                return Math.round((b - a) / 86400000);
+            }
+
+            // Desplaza todas las fechas de un dataset de ejemplo para que el ultimo dia
+            // del historial coincida con hoy, conservando la distancia entre fechas.
+            function shiftSampleDatasetToToday(data) {
+                if (!Array.isArray(data.records) || data.records.length === 0) return data;
+                let lastDate = data.sampleDataMeta && data.sampleDataMeta.generatedRange &&
+                    data.sampleDataMeta.generatedRange.end;
+                if (!lastDate) {
+                    lastDate = data.records.reduce((max, r) => (r.date && r.date > max ? r.date : max),
+                        data.records[0].date || '0000-00-00');
+                }
+                const shiftDays = daysBetweenDateStrs(lastDate, todayStr());
+                if (!shiftDays) return data;
+                for (const r of data.records) {
+                    if (r.date) r.date = shiftDateStr(r.date, shiftDays);
+                    if (typeof r.createdAt === 'string' && r.createdAt.length >= 10) {
+                        r.createdAt = shiftDateStr(r.createdAt.slice(0, 10), shiftDays) + r.createdAt.slice(10);
+                    }
+                }
+                return data;
+            }
+
             // Aplica un dataset completo (formato {patients, currentPatientId, records,
             // weatherDataCache}) sustituyendo el estado actual. Se usa al cargar los
             // datos de ejemplo (diabetes.json).
@@ -9231,6 +9317,7 @@ function addMedicationLog(medId, omitida) {
                     toast('El archivo de datos de ejemplo no tiene el formato esperado.', 'error');
                     return false;
                 }
+                shiftSampleDatasetToToday(data);
                 const importedPatients = [];
                 for (const patientData of data.patients) {
                     const importedPatient = normalizePatientForImport(patientData, false);
@@ -9293,24 +9380,32 @@ function addMedicationLog(medId, omitida) {
                     });
             }
 
+            function showNoPatientDataStepRole() {
+                if (noPatientDataStepChoice) noPatientDataStepChoice.style.display = 'none';
+                if (noPatientDataStepSample) noPatientDataStepSample.style.display = 'none';
+                if (noPatientDataStepRole) noPatientDataStepRole.style.display = '';
+            }
+
             function showNoPatientDataStepChoice() {
+                if (noPatientDataStepRole) noPatientDataStepRole.style.display = 'none';
                 if (noPatientDataStepSample) noPatientDataStepSample.style.display = 'none';
                 if (noPatientDataStepChoice) noPatientDataStepChoice.style.display = '';
             }
 
             function showNoPatientDataStepSample() {
+                if (noPatientDataStepRole) noPatientDataStepRole.style.display = 'none';
                 if (noPatientDataStepChoice) noPatientDataStepChoice.style.display = 'none';
                 if (noPatientDataStepSample) noPatientDataStepSample.style.display = '';
             }
 
             function showNoPatientDataModal() {
-                showNoPatientDataStepChoice();
+                showNoPatientDataStepRole();
                 if (noPatientDataModal) noPatientDataModal.classList.remove('closed');
             }
 
             function closeNoPatientDataModal() {
                 if (noPatientDataModal) noPatientDataModal.classList.add('closed');
-                showNoPatientDataStepChoice();
+                showNoPatientDataStepRole();
             }
 
             function normalizePatientForImport(source, promptForMissingGender = false) {
@@ -15160,6 +15255,22 @@ function addMedicationLog(medId, omitida) {
                 const countBefore = state.patients.length;
                 createNewPatient();
                 if (state.patients.length > countBefore) closeNoPatientDataModal();
+            });
+            if (rolePatientBtn) rolePatientBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                // Un paciente real solo necesita crear su propio perfil, sin que se le
+                // ofrezcan los datos de ejemplo (esos son solo para uso clinico/formativo).
+                const countBefore = state.patients.length;
+                createNewPatient();
+                if (state.patients.length > countBefore) closeNoPatientDataModal();
+            });
+            if (roleClinicianBtn) roleClinicianBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                showNoPatientDataStepChoice();
+            });
+            if (backToRoleBtn) backToRoleBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                showNoPatientDataStepRole();
             });
             if (showSampleDataInfoBtn) showSampleDataInfoBtn.addEventListener('click', (e) => {
                 e.preventDefault();
