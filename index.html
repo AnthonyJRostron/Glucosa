@@ -9,12 +9,7 @@
         }
     </script>
     <script>
-        /* ===== Proteccion basica anti-copia (disuasoria) =====
-           Bloquea las vias habituales del usuario casual: clic derecho, seleccion/copia
-           fuera de los campos de formulario, atajos de guardado / ver codigo fuente /
-           herramientas de desarrollo, F12 y arrastrar elementos. Los campos de texto
-           siguen funcionando con normalidad (escribir, pegar, seleccionar).
-           Para desactivarla: PROTECTION.enabled = false (o borrar este bloque). */
+
         (function () {
             'use strict';
             const PROTECTION = window.PROTECTION = {
@@ -4620,14 +4615,33 @@
     <!-- ========== SIN DATOS DE PACIENTE (primer uso / sin datos guardados) ========== -->
     <div class="fullscreen-modal-overlay closed" id="noPatientDataModal">
         <div class="fullscreen-modal-box">
-            <h2>Sin datos de paciente</h2>
-            <p style="color:#4a5568;font-size:0.95rem;margin:6px 0 16px;">
-                No se encontraron pacientes guardados en este navegador. Puedes anadir un paciente nuevo y
-                empezar desde cero, o cargar unos datos de ejemplo (ficticios) para explorar la aplicacion.
-            </p>
-            <div style="display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;">
-                <button class="btn btn-outline btn-sm" id="loadSampleDataBtn" type="button">Cargar datos de ejemplo</button>
-                <button class="btn btn-primary btn-sm" id="addNewPatientFromPromptBtn" type="button">+ Anadir nuevo paciente</button>
+            <div id="noPatientDataStepChoice">
+                <h2>Sin datos de paciente</h2>
+                <p style="color:#4a5568;font-size:0.95rem;margin:6px 0 16px;">
+                    No se encontraron pacientes guardados en este navegador. ¿Que quieres hacer?
+                </p>
+                <div style="display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;">
+                    <button class="btn btn-outline btn-sm" id="showSampleDataInfoBtn" type="button">Ver datos de ejemplo</button>
+                    <button class="btn btn-primary btn-sm" id="addNewPatientFromPromptBtn" type="button">+ Anadir nuevo paciente</button>
+                </div>
+            </div>
+            <div id="noPatientDataStepSample" style="display:none;">
+                <h2>Datos de ejemplo (paciente ficticia)</h2>
+                <p style="color:#4a5568;font-size:0.95rem;margin:6px 0 12px;">
+                    Estos datos <strong>no corresponden a ningun paciente real</strong>. Son un caso ficticio
+                    (con lecturas de glucosa, estado de animo, ejercicio, etc. ya rellenados) pensado unicamente
+                    para que el <strong>personal clinico pueda familiarizarse</strong> con el funcionamiento de la
+                    aplicacion antes de usarla con un paciente real.
+                </p>
+                <p style="color:#4a5568;font-size:0.95rem;margin:0 0 16px;">
+                    Si continuas, se cargaran en este navegador. Podras borrarlos en cualquier momento con el
+                    boton "Borrar todos los datos" antes de empezar a usar la aplicacion con un paciente de
+                    verdad.
+                </p>
+                <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+                    <button class="btn btn-outline btn-sm" id="backToNoPatientChoiceBtn" type="button">Atras</button>
+                    <button class="btn btn-primary btn-sm" id="loadSampleDataBtn" type="button">Si, cargar datos de ejemplo</button>
+                </div>
             </div>
         </div>
     </div>
@@ -5129,6 +5143,10 @@
             const missingDaysList = $('missingDaysList');
             const missingDaysCloseBtn = $('missingDaysCloseBtn');
             const noPatientDataModal = $('noPatientDataModal');
+            const noPatientDataStepChoice = $('noPatientDataStepChoice');
+            const noPatientDataStepSample = $('noPatientDataStepSample');
+            const showSampleDataInfoBtn = $('showSampleDataInfoBtn');
+            const backToNoPatientChoiceBtn = $('backToNoPatientChoiceBtn');
             const loadSampleDataBtn = $('loadSampleDataBtn');
             const addNewPatientFromPromptBtn = $('addNewPatientFromPromptBtn');
             const toastContainer = $('toastContainer');
@@ -9275,12 +9293,24 @@ function addMedicationLog(medId, omitida) {
                     });
             }
 
+            function showNoPatientDataStepChoice() {
+                if (noPatientDataStepSample) noPatientDataStepSample.style.display = 'none';
+                if (noPatientDataStepChoice) noPatientDataStepChoice.style.display = '';
+            }
+
+            function showNoPatientDataStepSample() {
+                if (noPatientDataStepChoice) noPatientDataStepChoice.style.display = 'none';
+                if (noPatientDataStepSample) noPatientDataStepSample.style.display = '';
+            }
+
             function showNoPatientDataModal() {
+                showNoPatientDataStepChoice();
                 if (noPatientDataModal) noPatientDataModal.classList.remove('closed');
             }
 
             function closeNoPatientDataModal() {
                 if (noPatientDataModal) noPatientDataModal.classList.add('closed');
+                showNoPatientDataStepChoice();
             }
 
             function normalizePatientForImport(source, promptForMissingGender = false) {
@@ -15130,6 +15160,14 @@ function addMedicationLog(medId, omitida) {
                 const countBefore = state.patients.length;
                 createNewPatient();
                 if (state.patients.length > countBefore) closeNoPatientDataModal();
+            });
+            if (showSampleDataInfoBtn) showSampleDataInfoBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                showNoPatientDataStepSample();
+            });
+            if (backToNoPatientChoiceBtn) backToNoPatientChoiceBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                showNoPatientDataStepChoice();
             });
             if (loadSampleDataBtn) loadSampleDataBtn.addEventListener('click', (e) => {
                 e.preventDefault();
