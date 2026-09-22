@@ -115,13 +115,7 @@
             document.head.appendChild(script);
         })();
     </script>
-    <!-- Estas librerias se cargan desde una CDN publica. La version anterior de
-         este archivo era una copia "Guardar pagina como" del navegador, que
-         reescribio estas etiquetas para apuntar a una carpeta local
-         (".../_files/nombre.js.descargar") que no viaja con el archivo .html:
-         por eso jsPDF (y exceljs) dejaban de funcionar al alojarlo o
-         al compartir solo este fichero. Se restauran aqui los enlaces
-         reales a la CDN, con una alternativa (jsdelivr) si cdnjs fallara. -->
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
         onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"
@@ -3413,7 +3407,7 @@
             <span>Datos almacenados localmente en tu navegador.</span>
             <span>
                 
-                <button class="btn btn-danger btn-xs" id="clearAllBtn">Borrar todos los datos</button>
+                <button class="btn btn-danger btn-xs" id="clearAllBtn">Borrar todo - empezar de nuevo</button>
             </span>
         </div>
     </div>
@@ -14887,5 +14881,4 @@ function addMedicationLog(medId, omitida) {
 
         })();
     </script>
-
 </body></html>
