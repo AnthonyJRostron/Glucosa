@@ -8629,24 +8629,33 @@ function addMedicationLog(medId, omitida) {
                 showLastWeather();
             }
 
-            function loadSampleData() {
-                fetch('diabetes.json')
-                    .then((response) => {
-                        if (!response.ok) throw new Error('HTTP ' + response.status);
-                        return response.json();
-                    })
-                    .then((data) => {
-                        if (!applySampleDataset(data)) return;
-                        refreshAfterDatasetChange();
-                        closeNoPatientDataModal();
-                        toast('Datos de ejemplo cargados correctamente', 'success');
-                    })
-                    .catch((err) => {
-                        console.warn('No se pudieron cargar los datos de ejemplo', err);
-                        toast('No se pudo cargar diabetes.json. Comprueba que el archivo esta en la misma ' +
-                            'carpeta que esta pagina y que la estas abriendo desde un servidor (http://) y no ' +
-                            'directamente como archivo (file://).', 'error');
+            async function loadSampleData(options = {}) {
+                const automatic = options.automatic === true;
+                try {
+                    // Construir la URL respecto a la pagina que esta sirviendo la app.
+                    // Esto evita problemas si index.html esta en una subcarpeta del servidor.
+                    const dataUrl = new URL('diabetes.json', document.baseURI).href;
+                    const response = await fetch(dataUrl, {
+                        method: 'GET',
+                        cache: 'no-store',
+                        headers: { 'Accept': 'application/json' }
                     });
+                    if (!response.ok) throw new Error('HTTP ' + response.status);
+                    const data = await response.json();
+
+                    if (!applySampleDataset(data)) return false;
+                    refreshAfterDatasetChange();
+                    closeNoPatientDataModal();
+                    toast(automatic
+                        ? 'Datos de diabetes.json cargados automaticamente'
+                        : 'Datos de ejemplo cargados correctamente', 'success');
+                    return true;
+                } catch (err) {
+                    console.warn('No se pudieron cargar los datos de diabetes.json', err);
+                    toast('No se pudo cargar diabetes.json. Comprueba que el archivo esta en la misma ' +
+                        'carpeta que index.html y que el servidor permite acceder a el.', 'error');
+                    return false;
+                }
             }
 
             function showNoPatientDataStepRole() {
@@ -14835,9 +14844,11 @@ function addMedicationLog(medId, omitida) {
                 // en vez de crear un paciente en blanco en silencio, se pregunta si
                 // quiere anadir uno nuevo o cargar los datos de ejemplo.
                 if (isPatientDataEmpty()) {
+                    // En una instalacion nueva, cargar automaticamente diabetes.json.
+                    // Los datos existentes en localStorage nunca se sustituyen.
                     saveState();
                     renderPatientSelect();
-                    showNoPatientDataModal();
+                    loadSampleData({ automatic: true });
                 }
 
                 // Medicamentos: render inicial (perfil + estado del catalogo)
@@ -14881,4 +14892,5 @@ function addMedicationLog(medId, omitida) {
 
         })();
     </script>
+
 </body></html>
