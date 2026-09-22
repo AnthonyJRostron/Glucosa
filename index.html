@@ -9214,19 +9214,25 @@ function addMedicationLog(medId, omitida) {
             }
 
             function clearAllData() {
-                state.records = state.records.filter(r => r.patientId !== state.currentPatientId);
-                const p = getCurrentPatient();
-                if (p) { p.name = ''; p.dni = ''; p.socialSecurity = ''; p.medicines = []; p.medicationLog = []; }
+                // "Borrar todos los datos" es un reinicio completo de la aplicacion en
+                // este navegador: borra TODOS los pacientes y registros (no solo los del
+                // paciente actual) y vuelve a dejar la app como en el primer uso, con el
+                // aviso de "sin datos" (anadir paciente / cargar ejemplos) otra vez.
+                state.patients = [];
+                state.records = [];
+                state.currentPatientId = null;
+                state.weatherDataCache = {};
                 saveState();
+                renderPatientSelect();
+                fillForms();
                 renderRecords();
                 renderMyMedicines();
                 renderMedicineCatalog();
                 renderMedicineLog();
                 renderMedCurrentSummary();
-                fillForms();
-                renderPatientSelect();
                 showLastWeather();
-                toast('Todos los datos del paciente actual han sido borrados', 'info');
+                toast('Todos los datos se han borrado', 'info');
+                showNoPatientDataModal();
             }
 
             // ---------- EDIT RECORD ----------
@@ -14443,8 +14449,9 @@ function addMedicationLog(medId, omitida) {
 
             // ---------- CLEAR ALL ----------
             clearAllBtn.addEventListener('click', () => {
-                if (getCurrentPatientRecords().length === 0) { toast('No hay datos para borrar', 'info'); return; }
-                confirmMessage.textContent = 'Borrar TODOS los registros y datos del paciente actualmente seleccionado? Esta accion es irreversible.';
+                const hasAnyData = state.patients.some(p => p.name || p.dni) || state.records.length > 0;
+                if (!hasAnyData) { toast('No hay datos para borrar', 'info'); return; }
+                confirmMessage.textContent = 'Borrar TODOS los datos guardados en este navegador (todos los pacientes y sus registros)? Esta accion es irreversible.';
                 confirmDialog.classList.remove('closed');
                 const origHandler = confirmYes.onclick;
                 confirmYes.onclick = () => {
@@ -14803,6 +14810,20 @@ function addMedicationLog(medId, omitida) {
                 });
             }
 
+            // Cierto (y limpia el estado) cuando no hay ningun dato de paciente util:
+            // ni pacientes, ni un paciente con nombre/DNI, ni ningun registro guardado.
+            // Cubre tanto el primer uso (patients=[]) como restos de versiones antiguas
+            // en las que "Borrar todos los datos" dejaba un paciente en blanco guardado.
+            function isPatientDataEmpty() {
+                if (!Array.isArray(state.patients) || state.patients.length === 0) return true;
+                const hasNamedPatient = state.patients.some(p => (p.name && p.name.trim()) || (p.dni && p.dni.trim()));
+                if (hasNamedPatient || state.records.length > 0) return false;
+                // Solo quedan pacientes en blanco y ningun registro: se descartan.
+                state.patients = [];
+                state.currentPatientId = null;
+                return true;
+            }
+
             function init() {
                 console.log('Inicializando app con PDF con graficos del analisis clinico...');
                 loadState();
@@ -14815,10 +14836,13 @@ function addMedicationLog(medId, omitida) {
                 updateWeatherDisplay();
                 updateWeatherDisplayCount();
 
-                // Sin ningun paciente guardado (primer uso, o el usuario borro todos
-                // los datos): en vez de crear un paciente en blanco en silencio, se
-                // pregunta si quiere anadir uno nuevo o cargar los datos de ejemplo.
-                if (!state.patients || state.patients.length === 0) {
+                // Sin ningun paciente guardado (primer uso, restos de un paciente en
+                // blanco de una version anterior, o el usuario borro todos los datos):
+                // en vez de crear un paciente en blanco en silencio, se pregunta si
+                // quiere anadir uno nuevo o cargar los datos de ejemplo.
+                if (isPatientDataEmpty()) {
+                    saveState();
+                    renderPatientSelect();
                     showNoPatientDataModal();
                 }
 
