@@ -2979,7 +2979,7 @@
         <!-- PATIENT INFO -->
         <details class="patient-card patient-collapsible" id="patientSection">
             <summary style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-                <strong id="patientSummaryName" style="color:#0b3b5c;flex:1 1 180px;">María Fernanda Villaverde Taboada</strong>
+                <strong id="patientSummaryName" style="color:#0b3b5c;flex:1 1 180px;">Nuevo paciente</strong>
                 <button class="btn btn-outline btn-sm" id="newPatientBtn" type="button">+ Nuevo paciente</button>
                 <button class="btn btn-outline btn-sm" id="importPatientBtn" type="button">Importar paciente</button>
                 <input type="file" id="importPatientFileInput" accept=".json,application/json" style="display:none;">
@@ -2989,7 +2989,7 @@
             <div class="patient-switcher">
                 <div class="form-group" style="flex:1 1 220px;">
                     <label>Paciente seleccionado</label>
-                    <select id="patientSelect"><option value="pt_mu3of9j6ph01wd">(Paciente sin nombre)</option><option value="pt_mu53mcxgxk5hw7">María Fernanda Villaverde Taboada · 35996199A</option></select>
+                    <select id="patientSelect"></select>
                 </div>
                 <button class="btn btn-outline btn-sm" id="deletePatientBtn" type="button">Eliminar paciente</button>
             </div>
@@ -4128,142 +4128,7 @@
                 </div>
             </div>
 
-            <div id="recordsList">
-                    <div class="reference-line-bar">
-                    <span class="ref-line-main">
-                        <strong>Objetivos de referencia (Adulto (tipo de diabetes no especificado)):</strong>
-                        Antes 80-130 ·
-                        Despues 80-180 ·
-                        Noche 80-180 mg/dL ·
-                        Hipoglucemia &lt;70 (grave &lt;54) ·
-                        Hiperglucemia grave &gt;250 mg/dL
-                    </span>
-                    <span class="ref-line-source" title="[ADA2026] / [SERGAS-DM2] (aplicado por defecto para adultos).">Fuente: [ADA2026] / [SERGAS-DM2] (aplicado por defecto para adultos).</span>
-                </div>
-                    <div class="records-table-container">
-                        <table class="records-table">
-                            <thead>
-                                <tr>
-                                    <th>Fecha</th>
-                                    <th>Comida</th>
-                                    <th>Antes</th>
-                                    <th>Despues</th>
-                                    <th>Nocturna</th>
-                                    <th>Medicacion</th>
-                                    <th>Ejercicio</th>
-                                    <th>Clima</th>
-                                    <th>Estado de animo</th>
-                                    <th>Contexto comida</th>
-                                    <th>Comentario</th>
-                                    <th class="actions-col-header" style="text-align:center;">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                
-                        <tr class="issue-moderate" data-id="mt8l493lseel">
-                            <td class="date-cell">25 ago 2026</td>
-                            <td><span class="meal-label">Desayuno</span></td>
-                            <td><span class="value-cell severity-cell" style="background:#fdf1cf;color:#7a5c0a;" title="202 (antes) — Por encima del objetivo | Objetivo de referencia (Adulto (tipo de diabetes no especificado)): 80-130 mg/dL | Hipoglucemia: &lt;70 mg/dL (grave &lt;54) · Hiperglucemia grave: &gt;250 mg/dL | Fuente: [ADA2026] / [SERGAS-DM2] (aplicado por defecto para adultos). | Perfil clinico no guardado en esta lectura (dato anterior); se ha usado el perfil actual del paciente.">202</span></td>
-                            <td><span class="value-cell empty">______</span></td>
-                            <td><span class="value-cell empty">______</span></td>
-                            <td><span class="tag-cell medication-tag empty">______</span></td>
-                            <td><span class="tag-cell exercise-tag ">Caminata · 35 min</span></td>
-                            <td><span class="tag-cell weather-tag ">18.0C 91% 1014hPa</span></td>
-                            <td><span class="tag-cell mood-tag ">Normal Dolor en piernas</span></td>
-                            <td><span class="tag-cell diet-tag empty">______</span></td>
-                            <td class="comment-cell">______</td>
-                            <td class="actions-col" style="text-align:center;">
-                                <div class="record-actions-cell">
-                                    <button class="btn btn-outline btn-xs edit-record" data-id="mt8l493lseel">Editar</button>
-                                    <button class="btn btn-danger btn-xs delete-record" data-id="mt8l493lseel">Eliminar</button>
-                                </div>
-                            </td>
-                        </tr>
-                    
-                        <tr class="issue-mild" data-id="mt8l3whmfy37">
-                            <td class="date-cell">24 ago 2026</td>
-                            <td><span class="meal-label">Desayuno</span></td>
-                            <td><span class="value-cell severity-cell" style="background:#fdf1cf;color:#7a5c0a;" title="172 (antes) — Por encima del objetivo | Objetivo de referencia (Adulto (tipo de diabetes no especificado)): 80-130 mg/dL | Hipoglucemia: &lt;70 mg/dL (grave &lt;54) · Hiperglucemia grave: &gt;250 mg/dL | Fuente: [ADA2026] / [SERGAS-DM2] (aplicado por defecto para adultos). | Perfil clinico no guardado en esta lectura (dato anterior); se ha usado el perfil actual del paciente.">172</span></td>
-                            <td><span class="value-cell empty">______</span></td>
-                            <td><span class="value-cell empty">______</span></td>
-                            <td><span class="tag-cell medication-tag empty">______</span></td>
-                            <td><span class="tag-cell exercise-tag ">Caminata · 34 min</span></td>
-                            <td><span class="tag-cell weather-tag ">18.1C 96% 1009hPa</span></td>
-                            <td><span class="tag-cell mood-tag ">Normal Dolor en piernas</span></td>
-                            <td><span class="tag-cell diet-tag empty">______</span></td>
-                            <td class="comment-cell">______</td>
-                            <td class="actions-col" style="text-align:center;">
-                                <div class="record-actions-cell">
-                                    <button class="btn btn-outline btn-xs edit-record" data-id="mt8l3whmfy37">Editar</button>
-                                    <button class="btn btn-danger btn-xs delete-record" data-id="mt8l3whmfy37">Eliminar</button>
-                                </div>
-                            </td>
-                        </tr>
-                    
-                        <tr class="issue-mild" data-id="mt8l34dojopc">
-                            <td class="date-cell">23 ago 2026</td>
-                            <td><span class="meal-label">Desayuno</span></td>
-                            <td><span class="value-cell severity-cell" style="background:#fdf1cf;color:#7a5c0a;" title="179 (antes) — Por encima del objetivo | Objetivo de referencia (Adulto (tipo de diabetes no especificado)): 80-130 mg/dL | Hipoglucemia: &lt;70 mg/dL (grave &lt;54) · Hiperglucemia grave: &gt;250 mg/dL | Fuente: [ADA2026] / [SERGAS-DM2] (aplicado por defecto para adultos). | Perfil clinico no guardado en esta lectura (dato anterior); se ha usado el perfil actual del paciente.">179</span></td>
-                            <td><span class="value-cell empty">______</span></td>
-                            <td><span class="value-cell empty">______</span></td>
-                            <td><span class="tag-cell medication-tag empty">______</span></td>
-                            <td><span class="tag-cell exercise-tag empty">______</span></td>
-                            <td><span class="tag-cell weather-tag ">19.9C 77% 1013hPa</span></td>
-                            <td><span class="tag-cell mood-tag ">Normal Dolor en piernas</span></td>
-                            <td><span class="tag-cell diet-tag empty">______</span></td>
-                            <td class="comment-cell">______</td>
-                            <td class="actions-col" style="text-align:center;">
-                                <div class="record-actions-cell">
-                                    <button class="btn btn-outline btn-xs edit-record" data-id="mt8l34dojopc">Editar</button>
-                                    <button class="btn btn-danger btn-xs delete-record" data-id="mt8l34dojopc">Eliminar</button>
-                                </div>
-                            </td>
-                        </tr>
-                    
-                        <tr class="" data-id="mt8l2kzd6te7">
-                            <td class="date-cell">22 ago 2026</td>
-                            <td><span class="meal-label">Desayuno</span></td>
-                            <td><span class="value-cell severity-cell" style="background:#fdf1cf;color:#7a5c0a;" title="145 (antes) — Por encima del objetivo | Objetivo de referencia (Adulto (tipo de diabetes no especificado)): 80-130 mg/dL | Hipoglucemia: &lt;70 mg/dL (grave &lt;54) · Hiperglucemia grave: &gt;250 mg/dL | Fuente: [ADA2026] / [SERGAS-DM2] (aplicado por defecto para adultos). | Perfil clinico no guardado en esta lectura (dato anterior); se ha usado el perfil actual del paciente.">145</span></td>
-                            <td><span class="value-cell empty">______</span></td>
-                            <td><span class="value-cell empty">______</span></td>
-                            <td><span class="tag-cell medication-tag empty">______</span></td>
-                            <td><span class="tag-cell exercise-tag empty">______</span></td>
-                            <td><span class="tag-cell weather-tag ">19.5C 69% 1014hPa</span></td>
-                            <td><span class="tag-cell mood-tag ">Estresado Enfadado Nervioso Dolor en piernas</span></td>
-                            <td><span class="tag-cell diet-tag empty">______</span></td>
-                            <td class="comment-cell">Mordida por un perro</td>
-                            <td class="actions-col" style="text-align:center;">
-                                <div class="record-actions-cell">
-                                    <button class="btn btn-outline btn-xs edit-record" data-id="mt8l2kzd6te7">Editar</button>
-                                    <button class="btn btn-danger btn-xs delete-record" data-id="mt8l2kzd6te7">Eliminar</button>
-                                </div>
-                            </td>
-                        </tr>
-                    
-                        <tr class="" data-id="mt8l2093h24b">
-                            <td class="date-cell">21 ago 2026</td>
-                            <td><span class="meal-label">Desayuno</span></td>
-                            <td><span class="value-cell severity-cell" style="background:#fdf1cf;color:#7a5c0a;" title="138 (antes) — Por encima del objetivo | Objetivo de referencia (Adulto (tipo de diabetes no especificado)): 80-130 mg/dL | Hipoglucemia: &lt;70 mg/dL (grave &lt;54) · Hiperglucemia grave: &gt;250 mg/dL | Fuente: [ADA2026] / [SERGAS-DM2] (aplicado por defecto para adultos). | Perfil clinico no guardado en esta lectura (dato anterior); se ha usado el perfil actual del paciente.">138</span></td>
-                            <td><span class="value-cell empty">______</span></td>
-                            <td><span class="value-cell empty">______</span></td>
-                            <td><span class="tag-cell medication-tag empty">______</span></td>
-                            <td><span class="tag-cell exercise-tag ">Caminata · 32 min</span></td>
-                            <td><span class="tag-cell weather-tag ">19.2C 64% 1018hPa</span></td>
-                            <td><span class="tag-cell mood-tag empty">______</span></td>
-                            <td><span class="tag-cell diet-tag empty">______</span></td>
-                            <td class="comment-cell">______</td>
-                            <td class="actions-col" style="text-align:center;">
-                                <div class="record-actions-cell">
-                                    <button class="btn btn-outline btn-xs edit-record" data-id="mt8l2093h24b">Editar</button>
-                                    <button class="btn btn-danger btn-xs delete-record" data-id="mt8l2093h24b">Eliminar</button>
-                                </div>
-                            </td>
-                        </tr>
-                    
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+            <div id="recordsList"></div>
             <button class="btn btn-outline btn-sm history-toggle" id="recordsToggleBtn" type="button" style="">Mostrar todas las mediciones</button>
         </section>
 
@@ -4748,6 +4613,21 @@
             <div id="missingDaysList" class="missing-days-list"></div>
             <div style="margin-top:20px;display:flex;justify-content:flex-end;gap:10px;">
                 <button class="btn btn-outline btn-sm" id="missingDaysCloseBtn">Ahora no</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== SIN DATOS DE PACIENTE (primer uso / sin datos guardados) ========== -->
+    <div class="fullscreen-modal-overlay closed" id="noPatientDataModal">
+        <div class="fullscreen-modal-box">
+            <h2>Sin datos de paciente</h2>
+            <p style="color:#4a5568;font-size:0.95rem;margin:6px 0 16px;">
+                No se encontraron pacientes guardados en este navegador. Puedes anadir un paciente nuevo y
+                empezar desde cero, o cargar unos datos de ejemplo (ficticios) para explorar la aplicacion.
+            </p>
+            <div style="display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;">
+                <button class="btn btn-outline btn-sm" id="loadSampleDataBtn" type="button">Cargar datos de ejemplo</button>
+                <button class="btn btn-primary btn-sm" id="addNewPatientFromPromptBtn" type="button">+ Anadir nuevo paciente</button>
             </div>
         </div>
     </div>
@@ -5248,6 +5128,9 @@
             const missingDaysModal = $('missingDaysModal');
             const missingDaysList = $('missingDaysList');
             const missingDaysCloseBtn = $('missingDaysCloseBtn');
+            const noPatientDataModal = $('noPatientDataModal');
+            const loadSampleDataBtn = $('loadSampleDataBtn');
+            const addNewPatientFromPromptBtn = $('addNewPatientFromPromptBtn');
             const toastContainer = $('toastContainer');
             const filterStart = $('filterStart');
             const filterEnd = $('filterEnd');
@@ -9093,15 +8976,17 @@ function addMedicationLog(medId, omitida) {
                             state.patients = [migrated];
                             state.currentPatientId = migrated.id;
                         } else {
-                            const blank = makeBlankPatient('');
-                            state.patients = [blank];
-                            state.currentPatientId = blank.id;
+                            // No hay ningun paciente guardado: se deja el listado vacio
+                            // en vez de crear uno en blanco automaticamente. init() se
+                            // encarga de preguntar al usuario que quiere hacer.
+                            state.patients = [];
+                            state.currentPatientId = null;
                         }
 
                         // Todo registro sin patientId (datos previos a la version multi-paciente)
                         // se asigna al primer paciente para no perder historial.
                         for (const r of state.records) {
-                            if (!r.patientId) r.patientId = state.patients[0].id;
+                            if (!r.patientId) r.patientId = state.patients[0] ? state.patients[0].id : null;
                             if (!r.weather) r.weather = null;
                             if (!r.moods) r.moods = ['normal'];
                             if (r.mood) {
@@ -9125,9 +9010,11 @@ function addMedicationLog(medId, omitida) {
                             }
                         }
                     } else {
-                        const blank = makeBlankPatient('');
-                        state.patients = [blank];
-                        state.currentPatientId = blank.id;
+                        // Primer uso del navegador: sin datos guardados. Se deja el
+                        // listado de pacientes vacio; init() preguntara al usuario si
+                        // quiere anadir un paciente nuevo o cargar los datos de ejemplo.
+                        state.patients = [];
+                        state.currentPatientId = null;
                     }
 
                     try {
@@ -9148,10 +9035,9 @@ function addMedicationLog(medId, omitida) {
 
                 } catch (e) {
                     console.warn('Error loading state', e);
-                    if (!state.patients || state.patients.length === 0) {
-                        const blank = makeBlankPatient('');
-                        state.patients = [blank];
-                        state.currentPatientId = blank.id;
+                    if (!Array.isArray(state.patients)) {
+                        state.patients = [];
+                        state.currentPatientId = null;
                     }
                 }
             }
@@ -9317,6 +9203,84 @@ function addMedicationLog(medId, omitida) {
                 renderMedicineLog();
                 renderMedCurrentSummary();
                 toast('Nuevo paciente creado', 'success');
+            }
+
+            // Aplica un dataset completo (formato {patients, currentPatientId, records,
+            // weatherDataCache}) sustituyendo el estado actual. Se usa al cargar los
+            // datos de ejemplo (diabetes.json).
+            function applySampleDataset(data) {
+                if (!data || !Array.isArray(data.patients) || data.patients.length === 0) {
+                    toast('El archivo de datos de ejemplo no tiene el formato esperado.', 'error');
+                    return false;
+                }
+                const importedPatients = [];
+                for (const patientData of data.patients) {
+                    const importedPatient = normalizePatientForImport(patientData, false);
+                    if (!importedPatient) return false;
+                    importedPatients.push(importedPatient);
+                }
+                state.patients = importedPatients;
+                state.currentPatientId = data.currentPatientId &&
+                    state.patients.some(p => p.id === data.currentPatientId) ?
+                    data.currentPatientId : state.patients[0].id;
+                state.records = Array.isArray(data.records) ? data.records : [];
+                for (const r of state.records) {
+                    if (!r.patientId) r.patientId = state.currentPatientId;
+                    if (!Array.isArray(r.moods) || r.moods.length === 0) r.moods = ['normal'];
+                    if (!Array.isArray(r.dietContext)) r.dietContext = [];
+                    if (!r.weather) r.weather = null;
+                    if (!r.severity) {
+                        const sevBefore = getSeverity(r.glucoseBefore);
+                        const sevAfter = getSeverity(r.glucoseAfter);
+                        const sevNight = getSeverity(r.glucoseNight);
+                        const sevOrder = ['emergency', 'urgent', 'moderate', 'mild'];
+                        const sevs = [sevBefore, sevAfter, sevNight].filter(s => s !== null);
+                        if (sevs.length > 0) r.severity = sevOrder.find(s => sevs.includes(s)) || 'mild';
+                    }
+                }
+                state.weatherDataCache = data.weatherDataCache || {};
+                return true;
+            }
+
+            function refreshAfterDatasetChange() {
+                saveState();
+                renderPatientSelect();
+                fillForms();
+                if (patientSection) patientSection.open = !getCurrentPatient()?.name;
+                renderRecords();
+                renderMyMedicines();
+                renderMedicineCatalog();
+                renderMedicineLog();
+                renderMedCurrentSummary();
+                showLastWeather();
+            }
+
+            function loadSampleData() {
+                fetch('diabetes.json')
+                    .then((response) => {
+                        if (!response.ok) throw new Error('HTTP ' + response.status);
+                        return response.json();
+                    })
+                    .then((data) => {
+                        if (!applySampleDataset(data)) return;
+                        refreshAfterDatasetChange();
+                        closeNoPatientDataModal();
+                        toast('Datos de ejemplo cargados correctamente', 'success');
+                    })
+                    .catch((err) => {
+                        console.warn('No se pudieron cargar los datos de ejemplo', err);
+                        toast('No se pudo cargar diabetes.json. Comprueba que el archivo esta en la misma ' +
+                            'carpeta que esta pagina y que la estas abriendo desde un servidor (http://) y no ' +
+                            'directamente como archivo (file://).', 'error');
+                    });
+            }
+
+            function showNoPatientDataModal() {
+                if (noPatientDataModal) noPatientDataModal.classList.remove('closed');
+            }
+
+            function closeNoPatientDataModal() {
+                if (noPatientDataModal) noPatientDataModal.classList.add('closed');
             }
 
             function normalizePatientForImport(source, promptForMissingGender = false) {
@@ -15161,6 +15125,16 @@ function addMedicationLog(medId, omitida) {
                 e.preventDefault();
                 createNewPatient();
             });
+            if (addNewPatientFromPromptBtn) addNewPatientFromPromptBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const countBefore = state.patients.length;
+                createNewPatient();
+                if (state.patients.length > countBefore) closeNoPatientDataModal();
+            });
+            if (loadSampleDataBtn) loadSampleDataBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                loadSampleData();
+            });
             if (importPatientBtn) importPatientBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 importPatientFileInput.click();
@@ -15416,6 +15390,13 @@ function addMedicationLog(medId, omitida) {
                 resetForm();
                 updateWeatherDisplay();
                 updateWeatherDisplayCount();
+
+                // Sin ningun paciente guardado (primer uso, o el usuario borro todos
+                // los datos): en vez de crear un paciente en blanco en silencio, se
+                // pregunta si quiere anadir uno nuevo o cargar los datos de ejemplo.
+                if (!state.patients || state.patients.length === 0) {
+                    showNoPatientDataModal();
+                }
 
                 // Medicamentos: render inicial (perfil + estado del catalogo)
                 renderMyMedicines();
