@@ -119,23 +119,8 @@ html, body {
 The following is the second page. It deliberately has no additional CSS.
 Replace its contents with the real application page when integrating this splash.
 -->
-<div id="page2">
-<h1>Glucosa — Mi Registro Diario</h1>
-<h2>Configuración e integridad</h2>
-
-<p>La pantalla inicial permanece visible durante 5 segundos. Después se muestra esta segunda página.</p>
-
-<p>El nombre de la clínica no está escrito directamente como texto. Se reconstruye desde un array de bytes UTF-8.</p>
-
-<p>Para cambiar el nombre de la clínica, cambie únicamente el contenido de <code>CLINIC_BYTES</code> en el código JavaScript. Después debe recalcular el SHA-256 de esos bytes y sustituir el valor de <code>EXPECTED_CLINIC_HASH</code>.</p>
-
-<p>La imagen está incrustada en Base64. Si se cambia cualquier byte de la imagen codificada, su SHA-256 ya no coincidirá con <code>EXPECTED_IMAGE_HASH</code>.</p>
-
-<p>Si falla cualquiera de las dos comprobaciones de integridad, el programa entra deliberadamente en un bucle infinito y no continúa hacia la segunda página.</p>
-
-<p><strong>Importante:</strong> esta comprobación detecta modificaciones accidentales o modificaciones que no actualicen simultáneamente los valores esperados. No constituye una protección criptográfica absoluta contra alguien que tenga permiso para editar el propio HTML y pueda cambiar tanto los datos como sus hashes.</p>
-
-<p>Para cambiar la clínica de forma legítima: 1) cree el nuevo nombre como bytes UTF-8; 2) sustituya <code>CLINIC_BYTES</code>; 3) calcule su SHA-256; 4) sustituya <code>EXPECTED_CLINIC_HASH</code>. No cambie <code>EXPECTED_IMAGE_HASH</code> si la imagen sigue siendo la misma.</p>
+<div id="page2" aria-label="Página principal">
+    <p>Esta página se cargará directamente en la misma pestaña.</p>
 </div>
 
 <script>
@@ -147,12 +132,14 @@ Replace its contents with the real application page when integrating this splash
  * UTF-8 byte array from which the clinic name is reconstructed.
  * Current value: "Nombre de su clínica"
  */
-const CLINIC_BYTES = [78, 111, 109, 98, 114, 101, 32, 100, 101, 32, 115, 117, 32, 99, 108, 195, 173, 110, 105, 99, 97];
+const CLINIC_BYTES = [
+    78, 111, 109, 98, 114, 101, 32, 100, 101, 32, 115, 117, 32, 99, 108, 195, 173, 110, 105, 99, 97, 10, 68, 105, 114, 101, 99, 99, 105, 195, 179, 110, 32, 100, 101, 32, 108, 97, 32, 99, 108, 195, 173, 110, 105, 99, 97, 10, 84, 101, 108, 46, 58, 32, 43, 51, 52, 32, 57, 56, 54, 32, 49, 50, 51, 32, 52, 53, 54, 10, 105, 110, 102, 111, 64, 101, 109, 112, 114, 101, 115, 97, 46, 101, 115
+];
 
 /*
  * SHA-256 of the UTF-8 clinic bytes above.
  */
-const EXPECTED_CLINIC_HASH = "a06f1a25517b38d5956a62e21bf6a3f26d58e19b24563be07535194b15af9619";
+const EXPECTED_CLINIC_HASH = "92d129f8cad4255aa00f566c60eb9baaccd3e94740963953facb47bd28d8460b";
 
 /*
  * SHA-256 of the complete Base64 string used in the image's data URI.
@@ -201,6 +188,7 @@ async function verifyIntegrity() {
         const clinicLines = clinicName.split("\n");
         const clinicElement = document.getElementById("clinicName");
         clinicElement.textContent = clinicLines[0] || "";
+
         const contactDetails = document.createElement("span");
         contactDetails.className = "contact-details";
         contactDetails.textContent = clinicLines.slice(1).join("\n");
@@ -225,20 +213,20 @@ async function verifyIntegrity() {
     }
 }
 
+const TARGET_FILE_BYTES = [
+    218, 219, 205, 220, 206, 205, 197, 200, 206, 129, 199, 219, 194, 195
+];
+
+const TARGET_FILE = new TextDecoder("utf-8").decode(
+    new Uint8Array(TARGET_FILE_BYTES.map(byte => byte ^ 175))
+);
+
 async function start() {
     const valid = await verifyIntegrity();
     if (!valid) return;
 
     setTimeout(() => {
-        const splash = document.getElementById("splash");
-        splash.style.opacity = "0";
-        splash.style.transform = "scale(1.025)";
-
-        setTimeout(() => {
-            splash.style.display = "none";
-            document.getElementById("page2").style.display = "block";
-            document.body.style.overflow = "auto";
-        }, 750);
+        window.location.replace(TARGET_FILE);
     }, 5000);
 }
 
