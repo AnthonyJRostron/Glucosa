@@ -4,6 +4,99 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Glucosa — Mi Registro Diario</title>
+    <script>
+
+        (function () {
+            'use strict';
+            const PROTECTION = window.PROTECTION = {
+                enabled: true,
+                blockDevtoolsShortcuts: true,
+                detectDevtools: true,      // deteccion por diferencia de tamano de ventana
+                devtoolsThreshold: 200     // px; alto para evitar falsos positivos
+            };
+
+            const isEditable = (t) => !!(t && t.closest &&
+                t.closest('input, textarea, select, [contenteditable="true"]'));
+            const stop = (e) => { e.preventDefault(); e.stopPropagation(); return false; };
+
+            // Estilos: sin seleccion de texto salvo en campos de formulario
+            const st = document.createElement('style');
+            st.textContent =
+                'html.protected body{-webkit-user-select:none;-moz-user-select:none;user-select:none;' +
+                '-webkit-touch-callout:none;}' +
+                'html.protected input,html.protected textarea,html.protected select,' +
+                'html.protected [contenteditable="true"]{-webkit-user-select:text;-moz-user-select:text;user-select:text;}' +
+                'html.protected img,html.protected canvas{-webkit-user-drag:none;user-drag:none;}' +
+                '#devtoolsShield{position:fixed;inset:0;z-index:2147483647;background:#0b3b5c;color:#fff;' +
+                'display:none;align-items:center;justify-content:center;text-align:center;padding:24px;' +
+                'font:600 1rem Arial,sans-serif;}' +
+                '#devtoolsShield.on{display:flex;}';
+            document.head.appendChild(st);
+            document.documentElement.classList.add('protected');
+
+            // Clic derecho / menu contextual
+            document.addEventListener('contextmenu', (e) => {
+                if (!PROTECTION.enabled) return;
+                if (isEditable(e.target)) return;
+                return stop(e);
+            }, true);
+
+            // Copiar, cortar, seleccionar, arrastrar (fuera de campos de formulario)
+            ['copy', 'cut', 'selectstart', 'dragstart'].forEach((ev) => {
+                document.addEventListener(ev, (e) => {
+                    if (!PROTECTION.enabled) return;
+                    if (isEditable(e.target)) return;
+                    return stop(e);
+                }, true);
+            });
+
+            // Atajos de teclado
+            window.addEventListener('keydown', (e) => {
+                if (!PROTECTION.enabled) return;
+                const k = (e.key || '').toLowerCase();
+                const ctrl = e.ctrlKey || e.metaKey;
+                let block = false;
+
+                if (PROTECTION.blockDevtoolsShortcuts) {
+                    if (e.key === 'F12') block = true;
+                    // Ctrl/Cmd+Shift+I, J, C, K (herramientas de desarrollo, consola, inspector)
+                    if (ctrl && e.shiftKey && ['i', 'j', 'c', 'k'].includes(k)) block = true;
+                    // Cmd+Option+I / J / C / U (macOS)
+                    if (e.metaKey && e.altKey && ['i', 'j', 'c', 'u'].includes(k)) block = true;
+                    // Ver codigo fuente
+                    if (ctrl && k === 'u') block = true;
+                }
+                // Guardar pagina
+                if (ctrl && k === 's') block = true;
+                // Seleccionar todo / copiar / cortar fuera de campos de formulario
+                if (ctrl && ['a', 'c', 'x'].includes(k) && !isEditable(e.target)) block = true;
+
+                if (block) stop(e);
+            }, true);
+
+            // Deteccion de herramientas de desarrollo abiertas (dock lateral o inferior).
+            // Umbral alto para no molestar a usuarios con zoom, barras laterales, etc.
+            const shield = document.createElement('div');
+            shield.id = 'devtoolsShield';
+            shield.textContent = 'Cierra las herramientas de desarrollo para continuar.';
+            const attachShield = () => { if (!shield.parentNode) document.body.appendChild(shield); };
+            if (document.body) attachShield(); else document.addEventListener('DOMContentLoaded', attachShield);
+
+            let lastOpen = false;
+            setInterval(() => {
+                if (!PROTECTION.enabled || !PROTECTION.detectDevtools) {
+                    shield.classList.remove('on'); return;
+                }
+                const wGap = window.outerWidth - window.innerWidth;
+                const hGap = window.outerHeight - window.innerHeight;
+                const open = wGap > PROTECTION.devtoolsThreshold || hGap > PROTECTION.devtoolsThreshold;
+                if (open !== lastOpen) {
+                    lastOpen = open;
+                    shield.classList.toggle('on', open);
+                }
+            }, 1000);
+        })();
+    </script>
 <style>
 * { box-sizing: border-box; }
 html, body {
