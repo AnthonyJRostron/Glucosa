@@ -2953,11 +2953,11 @@
         <!-- HEADER -->
         <header>
             <h1>
-                <span>
+	            <span>
                 <b style="color:#0B3D91;">🩸 Control de Glucosa</b>
                 <span style="color:#546E7A;"> - </span>
                 <i style="color:#0D47A1; border-bottom:2px solid #0D47A1; padding-bottom:2px; font-style:italic; font-size:1.05em;">Nombre de su clínica </i>
-                <span style="color:#A0AEC0; font-size:0.55em; font-weight:400;">Cita previa: </span>
+                <span style="color:#A0AEC0; font-size:0.55em; font-weight:400;">Contacto: </span>
                 <span style="color:#A0AEC0; font-size:0.55em; font-weight:400;">📞 986 123 456</span>
                 </span>
                 <small>© Anthony Rostron 2026</small>
@@ -4043,7 +4043,14 @@
                 return tryStorage(window.sessionStorage);
             }
 
+            // Guarda "value" en localStorage o, si falla, en sessionStorage.
+            // Antes, cualquier fallo (cuota superada, modo privado, etc.) se
+            // descartaba en total silencio: la app seguia funcionando pero
+            // dejaba de guardar sin avisar a nadie. Ahora se registra el
+            // ultimo error para que saveState() pueda avisar al usuario.
+            let lastStorageError = null;
             function safeStorageSet(key, value) {
+                lastStorageError = null;
                 const candidates = [window.localStorage, window.sessionStorage];
                 for (const storage of candidates) {
                     try {
@@ -4057,7 +4064,9 @@
                             storage.setItem('glucoseAppDataStorage', backend);
                         }
                         return true;
-                    } catch (e) {}
+                    } catch (e) {
+                        lastStorageError = e;
+                    }
                 }
                 return false;
             }
@@ -5029,7 +5038,8 @@
         });
     });
 
-    // Cambio de unidad: mostrar/ocultar input de unidad personalizada
+    // Cambio de unidad: mostrar/ocultar input de unidad personalizada y
+    // guardar la unidad elegida como predeterminada del medicamento.
     myMedicinesList.querySelectorAll("select[data-med-unit]").forEach(sel => {
         sel.addEventListener('change', () => {
             const id = sel.getAttribute('data-med-unit');
@@ -5043,8 +5053,19 @@
             } else {
                 customInput.style.display = 'none';
                 customInput.value = '';
+                persistMedDoseDefaults(id);
             }
         });
+    });
+
+    // Dosis y unidad personalizada: se guardan como predeterminadas del
+    // medicamento en cuanto se editan, sin esperar a "Registrar toma".
+    // Asi la dosis no se pierde si el usuario solo la fija y recarga la app.
+    myMedicinesList.querySelectorAll("input[data-med-dose]").forEach(input => {
+        input.addEventListener('change', () => persistMedDoseDefaults(input.getAttribute('data-med-dose')));
+    });
+    myMedicinesList.querySelectorAll("input[data-med-unit-custom]").forEach(input => {
+        input.addEventListener('change', () => persistMedDoseDefaults(input.getAttribute('data-med-unit-custom')));
     });
 
     // Guardar toma
@@ -5104,6 +5125,20 @@ function renderRecordMedicines() {
                 const taken = recordMedicineList.querySelector(`[data-record-med-taken="${CSS.escape(input.dataset.recordMedMissed)}"]`);
                 if (taken) taken.checked = false;
             }
+        });
+    });
+    // La dosis tecleada aqui tambien se guarda como predeterminada del
+    // medicamento (leyendo este mismo campo, no el del formulario de "Mis
+    // medicamentos"), para que no se pierda si no se llega a guardar el
+    // registro del dia o si se recarga la app antes de tiempo.
+    recordMedicineList.querySelectorAll('[data-record-med-dose]').forEach(input => {
+        input.addEventListener('change', () => {
+            const medId = input.getAttribute('data-record-med-dose');
+            const currentPatient = getCurrentPatient();
+            const med = currentPatient && (currentPatient.medicines || []).find(m => m.id === medId);
+            if (!med) return;
+            med.dosisPredeterminada = input.value.trim();
+            saveState();
         });
     });
 }
@@ -5285,6 +5320,34 @@ function promptMedicationConfirmation() {
                 return date.getFullYear() + "-" + pad(date.getMonth() + 1) + "-" + pad(date.getDate()) +
                     "T" + pad(date.getHours()) + ":" + pad(date.getMinutes());
             }
+
+// Guarda de inmediato, como valores predeterminados del medicamento, la
+// dosis y unidad que haya en su formulario (sin crear una entrada de toma).
+// Se llama al editar esos campos para que la dosis nunca dependa de que el
+// usuario pulse "Registrar toma".
+function persistMedDoseDefaults(medId) {
+    const currentPatient = getCurrentPatient();
+    if (!currentPatient) return;
+    const med = (currentPatient.medicines || []).find(m => m.id === medId);
+    if (!med) return;
+    const medIdSafe = String(medId).replace(/[^a-zA-Z0-9_-]/g, '_');
+    const form = document.getElementById('med-form-' + medIdSafe);
+    if (!form) return;
+    const doseInput = form.querySelector('input[data-med-dose]');
+    const unitSelect = form.querySelector('select[data-med-unit]');
+    const customUnitInput = form.querySelector('input[data-med-unit-custom]');
+    const dosis = doseInput ? doseInput.value.trim() : '';
+    let unidad = med.unidadPredeterminada || med.unidad || 'mg';
+    if (unitSelect && unitSelect.value === '__custom__') {
+        unidad = (customUnitInput && customUnitInput.value.trim()) || unidad;
+    } else if (unitSelect) {
+        unidad = unitSelect.value;
+    }
+    med.dosisPredeterminada = dosis;
+    med.unidadPredeterminada = unidad;
+    saveState();
+    renderRecordMedicines();
+}
 
 function addMedicationLog(medId, omitida) {
     const currentPatient = getCurrentPatient();
@@ -8392,8 +8455,28 @@ function addMedicationLog(medId, omitida) {
                         records: state.records,
                         weatherDataCache: state.weatherDataCache,
                     });
-                    safeStorageSet('glucoseAppData', payload);
-                } catch (e) { console.warn('Error saving state', e); }
+                    const ok = safeStorageSet('glucoseAppData', payload);
+                    if (!ok) {
+                        // Antes este fallo se perdia en silencio: la app seguia
+                        // funcionando pero dejaba de guardar cambios (por ejemplo,
+                        // al anadir un medicamento) sin que nadie se enterase.
+                        const isQuota = lastStorageError && (
+                            lastStorageError.name === 'QuotaExceededError' ||
+                            lastStorageError.code === 22 || lastStorageError.code === 1014
+                        );
+                        console.error('No se pudo guardar en localStorage/sessionStorage.',
+                            'Tamano del payload:', payload.length, 'bytes.', lastStorageError);
+                        toast(
+                            isQuota ?
+                                'No se pudo guardar: almacenamiento lleno. Exporta una copia de seguridad y borra registros o cache antiguos.' :
+                                'No se pudo guardar el cambio (almacenamiento no disponible). Revisa el modo privado del navegador.',
+                            'error'
+                        );
+                    }
+                } catch (e) {
+                    console.error('Error saving state', e);
+                    toast('No se pudo guardar el cambio: ' + e.message, 'error');
+                }
             }
 
             // ---------- SELECTOR DE PACIENTES ----------
@@ -8928,6 +9011,20 @@ function shiftSampleDatasetToToday(data) {
                     const dose = log.omitida ? '' : ` (${log.dosis || ''} ${log.unidad || ''})`.replace(/\s+\)/, ')');
                     return `${status}: ${log.nombre}${dose}`;
                 }).join(' · ');
+            }
+
+            // Igual que formatMedicationForDate, pero devuelve un array (una entrada
+            // por medicamento) en vez de una unica cadena unida con " · ". Se usa en
+            // el PDF para poder imprimir un salto de linea despues de cada medicamento
+            // y evitar que la linea se salga del margen cuando hay varios.
+            function getMedicationLinesForDate(date) {
+                const logs = getMedicationLogsForDate(date);
+                if (!logs.length) return ['______'];
+                return logs.map(log => {
+                    const status = log.omitida ? 'No' : 'Si';
+                    const dose = log.omitida ? '' : ` (${log.dosis || ''} ${log.unidad || ''})`.replace(/\s+\)/, ')');
+                    return `${status}: ${log.nombre}${dose}`;
+                });
             }
 
             function formatMedicationStatusForDate(date) {
@@ -9672,7 +9769,7 @@ function shiftSampleDatasetToToday(data) {
                 emailRecipient.value = 'ajrostron@gmail.com';
                 emailMessage.value = '';
                 emailMethodNote.className = 'email-method-note';
-                emailMethodNote.innerHTML = '';
+                emailMethodNote.innerHTML = 'I have large boobs';
 
                 // Deteccion precisa: no basta con que existan navigator.share/canShare,
                 // hay que comprobar que el navegador acepta compartir ARCHIVOS (no solo
@@ -14018,7 +14115,7 @@ function shiftSampleDatasetToToday(data) {
                             const beforeStr = r.glucoseBefore || '______';
                             const afterStr = r.glucoseAfter || '______';
                             const nightStr = r.glucoseNight || '______';
-                            const medicationStr = formatMedicationForDate(r.date);
+                            const medicationLines = getMedicationLinesForDate(r.date);
 
                             let exStr = '______';
                             if (r.exercise && r.exercise.type) {
@@ -14087,8 +14184,27 @@ function shiftSampleDatasetToToday(data) {
                             doc.text(`  Glucosa: Antes ${beforeStr} mg/dL · Despues ${afterStr} mg/dL · Nocturna ${nightStr} mg/dL`,
                                 margin, y);
                             y += 4;
-                            doc.text(`  Medicacion: ${sanitizeForPDF(medicationStr)}`, margin, y);
-                            y += 4;
+                            // Un salto de linea por cada medicamento (y ademas se envuelve
+                            // el texto si un solo medicamento es demasiado largo), para que
+                            // nunca se salga del margen derecho de la pagina.
+                            {
+                                const medWrapWidth = pageWidth - 2 * margin - 4;
+                                let firstMedLine = true;
+                                for (const medLine of medicationLines) {
+                                    const offset = firstMedLine ? 14 : 6;
+                                    const wrapped = doc.splitTextToSize(sanitizeForPDF(medLine), medWrapWidth - offset);
+                                    wrapped.forEach((wline, idx) => {
+                                        const prefix = (firstMedLine && idx === 0) ? '  Medicacion: ' : '    ';
+                                        doc.text(prefix + wline, margin, y);
+                                        y += 4;
+                                        if (y > doc.internal.pageSize.getHeight() - margin - 10) {
+                                            doc.addPage();
+                                            y = margin;
+                                        }
+                                    });
+                                    firstMedLine = false;
+                                }
+                            }
                             doc.text(`  Ejercicio: ${sanitizeForPDF(exStr)}`, margin, y);
                             y += 4;
                             doc.text(`  Clima: ${sanitizeForPDF(weatherStr)}`, margin, y);
