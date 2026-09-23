@@ -2953,7 +2953,7 @@
         <!-- HEADER -->
         <header>
             <h1>
-                <span>Control de Glucosa</span>
+                <span>Control de Glucosa - Nombre de su clínica</span>
                 <small>v1.0 · Anthony Rostron</small>
             </h1>
             <div class="header-actions">
@@ -9663,7 +9663,7 @@ function shiftSampleDatasetToToday(data) {
                     toast('El paciente actual no tiene registros para enviar.', 'info');
                     return;
                 }
-                emailRecipient.value = '';
+                emailRecipient.value = 'ajrostron@gmail.com';
                 emailMessage.value = '';
                 emailMethodNote.className = 'email-method-note';
                 emailMethodNote.innerHTML = '';
