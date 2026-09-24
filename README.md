@@ -103,7 +103,7 @@ Cuando vayas a la consulta, **tienes tres formas de entregar tus datos** al prof
 
 ### 2.5 ¿Con qué frecuencia debo exportar mis datos?
 
-**Exporta tus datos al menos una vez a la semana.** La app guarda los datos en el navegador, y un borrado accidental, un cambio de dispositivo o una limpieza del navegador pueden hacerte perderlo todo. Exportar semanalmente es una red de seguridad sencilla. Utiliza el botón «Copia de seguridad» que aparece junto a tu nombre en la barra superior.
+**Exporta tus datos al menos una vez a la semana.** La app guarda los datos en el navegador, y un borrado accidental, un cambio de dispositivo o una limpieza del navegador pueden hacerte perderlo todo. Exportar semanalmente es una red de seguridad sencilla. **Utiliza el botón «Copia de seguridad» que aparece junto a tu nombre en la barra superior.**
 
 > **Importante:** exportar no es lo mismo que enviar el correo a la clínica. Exportar es una **copia de seguridad personal**; enviar el correo es **compartir con el profesional sanitario** para la consulta.
 
