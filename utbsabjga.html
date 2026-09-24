@@ -3751,44 +3751,9 @@
             <button class="modal-close" id="helpModalClose">×</button>
             <h2>Ayuda y guia de la aplicacion</h2>
             <div class="help-content">
+                <div id="helpMarkdownContent">Cargando ayuda...</div>
 
-                <h3>1. Como usar la aplicacion</h3>
-                <ol class="help-steps">
-                    <li><strong>Paciente:</strong> crea o selecciona un paciente en la seccion "Paciente"
-                        (arriba del todo). Puedes gestionar varios pacientes con el selector y cambiar
-                        rapidamente entre perfiles sin perder los datos de cada uno.</li>
-                    <li><strong>Perfil clinico:</strong> rellena el tipo de diabetes, el grupo de paciente
-                        y el estado de embarazo. Estos datos determinan que objetivos de referencia se usan
-                        para colorear tus lecturas y calcular el tiempo en rango. Idealmente los debe indicar
-                        tu profesional sanitario; el estado de embarazo lo puedes indicar tu mismo/a.</li>
-                    <li><strong>Medicamentos:</strong> usa el buscador de medicamentos para anadir los
-                        farmacos que tomas. Puedes registrar cada toma con su dosis y unidad (mg, UI,
-                        tableta, etc.), y tambien marcar tomas omitidas. La dosis y unidad que uses quedan
-                        memorizadas como predeterminadas para ese medicamento.</li>
-                    <li><strong>Anadir lecturas:</strong> registra tu glucosa antes/despues de las comidas y
-                        por la noche, junto con ejercicio, animo, clima y comentarios si quieres. Si quieres
-                        hacer un seguimiento mas completo, completa tambien el tipo de comida, la temperatura
-                        y la humedad cuando esten disponibles.</li>
-                    <li><strong>Ubicacion y clima:</strong> puedes usar la ubicacion del dispositivo para buscar
-                        condiciones meteorologicas o introducir manualmente latitud/longitud si prefieres.
-                        El clima se usa como contexto descriptivo en los analisis de relacion con la glucosa.</li>
-                    <li><strong>Historial:</strong> revisa tus registros; cada valor aparece coloreado segun
-                        si esta dentro de tu objetivo de referencia (pasa el raton por encima para ver el
-                        detalle). Arriba del historial se muestra siempre una linea con tus objetivos
-                        actuales.</li>
-                    <li><strong>Graficos y estadisticas:</strong> abre "Ver analisis clinico" para el tiempo en
-                        rango, tendencias, comparaciones antes/despues de un cambio, y analisis exploratorio
-                        de clima/animo/ejercicio. Debe ser interpretado por un profesional sanitario. Con el boton "Imprimir PDF" (arriba) puedes generar la version para el paciente o un informe clinico con las secciones que elijas.</li>
-                    <li><strong>Tema / modo claro y oscuro:</strong> en la esquina superior derecha aparece
-                        un interruptor "Tema". Puedes cambiar entre modo claro y oscuro para una mejor
-                        visualizacion. La preferencia se guarda en el navegador para que siga activa en
-                        futuras sesiones.</li>
-                    <li><strong>Exportar o enviar:</strong> puedes exportar un PDF, exportar JSON (copia de
-                        seguridad de todos los pacientes), o enviar los datos del paciente actual por email
-                        a un profesional sanitario.</li>
-                </ol>
-
-                <h3>2. Valores de referencia de glucosa (por perfil clinico)</h3>
+                <h3>Valores de referencia de glucosa (por perfil clinico)</h3>
                 <div class="clinical-decision-banner" style="margin-bottom:14px;">
                     Estos valores son objetivos de referencia poblacional tomados de guias clinicas
                     oficiales (indicadas junto a cada tabla). <strong>No sustituyen la valoracion
@@ -3796,49 +3761,6 @@
                     para tu caso concreto mediante el "objetivo personalizado" en la seccion Paciente.
                 </div>
                 <div id="helpReferenceTables"><!-- generado dinamicamente --></div>
-
-                <h3>3. Tema y apariencia</h3>
-                <p>La aplicacion dispone de dos modos de visualizacion: claro y oscuro. El interruptor
-                    "Tema" se encuentra junto al boton de ayuda en la cabecera, y cambia rapidamente la
-                    apariencia de la interfaz sin borrar ni modificar tus datos.</p>
-                <ul>
-                    <li><strong>Modo claro:</strong> ideal para entornos muy luminosos o para un uso general.</li>
-                    <li><strong>Modo oscuro:</strong> reduce el brillo visual y puede resultar mas comodo en
-                        entornos con poca luz.</li>
-                    <li><strong>Persistencia:</strong> la seleccion se guarda automaticamente en tu navegador,
-                        asi que la aplicacion mantiene tu preferencia la proxima vez que la abras.</li>
-                </ul>
-
-                <h3>4. Metodos estadisticos</h3>
-                <p>Esta herramienta utiliza varios metodos estadisticos para ayudarte a entender tus niveles de glucosa.</p>
-                <h4><span class="stat-badge">Media</span> - Promedio de todas tus lecturas</h4>
-                <div class="significance"><strong>Utilidad:</strong> Util para ver tendencias generales a largo plazo.</div>
-                <div class="limitation"><strong>Limitacion:</strong> Puede verse afectada por valores extremos.</div>
-                <h4><span class="stat-badge">Mediana</span> - Valor central</h4>
-                <div class="significance"><strong>Utilidad:</strong> Mas robusta que la media frente a valores extremos.</div>
-                <h4><span class="stat-badge">Desviacion estandar (SD)</span></h4>
-                <div class="significance"><strong>Utilidad:</strong> Mide la estabilidad de la glucosa.</div>
-                <h4><span class="stat-badge">Coeficiente de variacion (CV)</span></h4>
-                <div class="significance"><strong>Utilidad:</strong> CV &gt;36% se asocia con mayor riesgo de hipoglucemia.</div>
-                <h4><span class="stat-badge">Tiempo en rango (TIR)</span></h4>
-                <p>Porcentaje de lecturas dentro de un rango objetivo. El rango y el objetivo de
-                    referencia dependen del perfil clinico del paciente (ver seccion 2 mas arriba).
-                    Consulta el panel de "Tiempo en rango" para ver la poblacion de referencia aplicada
-                    y la fuente de cada objetivo.</p>
-                <h3>5. Analisis exploratorio</h3>
-                <p>La aplicacion tambien evalua, de forma descriptiva y no causal, la posible relacion
-                    entre tu glucosa y la temperatura, humedad, presion atmosferica, el estado de animo,
-                    el ejercicio y el tipo de comida. Puedes seleccionar multiples estados de animo o
-                    sintomas fisicos (emocionales: feliz, triste, ansioso, estresado...; fisicos: dolor
-                    de cabeza, dolor muscular, malestar, fatiga...).</p>
-                <p>Los resultados se muestran como contexto visual para ayudarte a identificar patrones, pero
-                    no implican una causa directa ni una recomendacion teraputica automatica.</p>
-
-                <h3>6. Aviso medico</h3>
-                <p>Esta aplicacion es una herramienta de apoyo descriptivo y exploratorio. No diagnostica,
-                    no prescribe tratamientos y no debe usarse para modificar medicacion por tu cuenta.
-                    La interpretacion definitiva de tus datos corresponde siempre a un profesional
-                    sanitario.</p>
             </div>
         </div>
     </div>
@@ -14890,7 +14812,102 @@ function shiftSampleDatasetToToday(data) {
                     buildPopulationCard(REFERENCE_TARGETS[key], SMBG_TARGETS[key])).join('');
             }
 
+            // ---------- AYUDA: CARGA DE readme.md ----------
+            // El contenido de ayuda ya no esta escrito a mano en el HTML: se
+            // carga desde un archivo readme.md situado en la misma carpeta que
+            // este archivo (la "raiz" de la aplicacion) y se convierte a HTML
+            // con un conversor Markdown minimo (sin dependencias externas).
+            // Solo se descarga una vez por sesion (se guarda en helpMarkdownCache).
+            let helpMarkdownCache = null;
+
+            // Conversor Markdown basico: titulos (#, ##, ###), negrita, cursiva,
+            // codigo en linea, bloques de codigo, listas (con y sin numeros),
+            // enlaces y parrafos. Cubre lo habitual en un README sin necesitar
+            // una libreria externa.
+            function renderMarkdownBasic(md) {
+                const escapeMd = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                const lines = md.replace(/\r\n/g, '\n').split('\n');
+                let html = '';
+                let inList = null; // 'ul' | 'ol' | null
+                let inCode = false;
+                let codeBuf = [];
+                const closeList = () => { if (inList) { html += `</${inList}>`; inList = null; } };
+                const inline = t => escapeMd(t)
+                    .replace(/`([^`]+)`/g, '<code>$1</code>')
+                    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+                    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+                for (const rawLine of lines) {
+                    const line = rawLine;
+                    if (/^```/.test(line.trim())) {
+                        if (inCode) {
+                            html += `<pre><code>${escapeMd(codeBuf.join('\n'))}</code></pre>`;
+                            codeBuf = [];
+                            inCode = false;
+                        } else {
+                            closeList();
+                            inCode = true;
+                        }
+                        continue;
+                    }
+                    if (inCode) { codeBuf.push(line); continue; }
+                    const h = line.match(/^(#{1,4})\s+(.*)$/);
+                    if (h) {
+                        closeList();
+                        const level = Math.min(h[1].length + 1, 5); // # -> h2, ## -> h3, etc.
+                        html += `<h${level}>${inline(h[2].trim())}</h${level}>`;
+                        continue;
+                    }
+                    const ol = line.match(/^\s*\d+[.)]\s+(.*)$/);
+                    const ul = line.match(/^\s*[-*+]\s+(.*)$/);
+                    if (ol) {
+                        if (inList !== 'ol') { closeList(); html += '<ol class="help-steps">'; inList = 'ol'; }
+                        html += `<li>${inline(ol[1])}</li>`;
+                        continue;
+                    }
+                    if (ul) {
+                        if (inList !== 'ul') { closeList(); html += '<ul>'; inList = 'ul'; }
+                        html += `<li>${inline(ul[1])}</li>`;
+                        continue;
+                    }
+                    if (!line.trim()) { closeList(); continue; }
+                    closeList();
+                    html += `<p>${inline(line.trim())}</p>`;
+                }
+                closeList();
+                if (inCode && codeBuf.length) html += `<pre><code>${escapeMd(codeBuf.join('\n'))}</code></pre>`;
+                return html;
+            }
+
+            async function loadHelpMarkdown() {
+                const container = document.getElementById('helpMarkdownContent');
+                if (!container) return;
+                if (helpMarkdownCache !== null) {
+                    container.innerHTML = helpMarkdownCache;
+                    return;
+                }
+                try {
+                    const res = await fetch('readme.md', { cache: 'no-store' });
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    const text = await res.text();
+                    helpMarkdownCache = renderMarkdownBasic(text);
+                    container.innerHTML = helpMarkdownCache;
+                } catch (err) {
+                    // Motivo habitual: el archivo se abrio directamente desde el
+                    // disco (doble clic, file://) en vez de servirlo desde un
+                    // servidor web, y el navegador bloquea la lectura de otros
+                    // archivos locales en ese caso.
+                    container.innerHTML =
+                        '<p><strong>No se ha podido cargar readme.md.</strong></p>' +
+                        '<p>Comprueba que el archivo <code>readme.md</code> esta en la misma carpeta ' +
+                        'que esta aplicacion y que la estas abriendo desde un servidor web ' +
+                        '(no con doble clic / <code>file://</code>), ya que los navegadores bloquean ' +
+                        'por seguridad la lectura de otros archivos locales en ese modo.</p>';
+                }
+            }
+
             function openHelpModal() {
+                loadHelpMarkdown();
                 renderHelpReferenceTables();
                 helpModal.classList.remove('closed');
             }
