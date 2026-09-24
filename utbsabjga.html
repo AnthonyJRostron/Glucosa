@@ -866,6 +866,20 @@
         .records-table tbody td .tag-cell.medication-tag {
             background: #e9f1f9;
             color: #214b67;
+            white-space: normal;
+            max-width: 220px;
+            display: inline-block;
+            margin: 1px 3px 1px 0;
+        }
+        .records-table tbody td .tag-cell.medication-tag.med-status-taken {
+            background: #dff0e6;
+            color: #1f6b45;
+            font-weight: 600;
+        }
+        .records-table tbody td .tag-cell.medication-tag.med-status-missed {
+            background: #fbe2e2;
+            color: #a3242c;
+            font-weight: 600;
         }
         .records-table tbody td .tag-cell.empty {
             color: #a0b8cc;
@@ -2463,6 +2477,7 @@
         .record-med-row:last-child { border-bottom: none; }
         .record-med-row > label { flex: 1 1 180px; font-size: 0.82rem; color: #1e4a6b; font-weight: 600; }
         .record-med-row input[type="number"] { width: 82px; padding: 5px 8px; font-size: 0.8rem; }
+        .record-med-row input[type="time"] { width: 92px; padding: 5px 8px; font-size: 0.8rem; }
         .record-med-row .record-med-dose-label { font-size: 0.72rem; color: #6a8aa5; }
         .record-med-row .record-med-missed {
             margin-left: 8px;
@@ -2830,6 +2845,16 @@
             color: #edf7ff;
             border: 1px solid rgba(255,255,255,0.08);
         }
+        html.dark-theme .records-table tbody td .tag-cell.medication-tag.med-status-taken {
+            background: #17402b;
+            color: #d6ffe6;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        html.dark-theme .records-table tbody td .tag-cell.medication-tag.med-status-missed {
+            background: #4a1f22;
+            color: #ffd9d9;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
         html.dark-theme .records-table tbody td .tag-cell.empty {
             color: #dfeaf5;
             background: #2a3d4d;
@@ -2958,7 +2983,7 @@
                 <span style="color:#546E7A;"> - </span>
                 <i style="color:#0D47A1; border-bottom:2px solid #0D47A1; padding-bottom:2px; font-style:italic; font-size:1.05em;">Nombre de su clínica </i>
                 <span style="color:#A0AEC0; font-size:0.55em; font-weight:400;">Contacto: </span>
-                <span style="color:#A0AEC0; font-size:0.55em; font-weight:400;">📞 986 123 456 📩 info@empresa.es </span>
+                <span style="color:#A0AEC0; font-size:0.55em; font-weight:400;">📞 986 123 456 📩 <a href="mailto:info@empresa.com" style="color:#A0AEC0; text-decoration:underline;"></a>Mailto:info@clinica.com</a></span>
                 </span>
                 <small>© Anthony Rostron 2026</small>
             </h1>
@@ -4094,7 +4119,7 @@
                     glucoseUnit: 'mgdl', // mgdl | mmol
                     customTarget: null, // { lowerMgdl, upperMgdl, tirTargetPct, label } | null
                     // ---- Medicamentos (integrado desde Get-medicine.html) ----
-                    medicines: [], // [{id, nombre, principio_activo, laboratorio, clase, via, unidad, riesgo_hipo, posibles_dosis, dosisPredeterminada, unidadPredeterminada}]
+                    medicines: [], // [{id, nombre, principio_activo, laboratorio, clase, via, unidad, riesgo_hipo, posibles_dosis, dosisPredeterminada, unidadPredeterminada, horaPredeterminada}]
                     medicationLog: [] // [{id, medId, nombre, dosis, unidad, fecha, omitida, nota}]
                 };
             }
@@ -4998,7 +5023,8 @@
             if (!wasOpen) {
                 form.classList.add('open');
                 const dtInput = form.querySelector('input[data-med-datetime]');
-                if (dtInput) dtInput.value = toLocalDatetimeValueMed(new Date());
+                const med = (currentPatient.medicines || []).find(x => x.id === id);
+                if (dtInput) dtInput.value = toLocalDatetimeValueMed(computeMedDatetimeDefault(med));
             }
         });
     });
@@ -5015,7 +5041,8 @@
             if (!wasOpen) {
                 missedForm.classList.add('open');
                 const dtInput = missedForm.querySelector('input[data-missed-datetime]');
-                if (dtInput) dtInput.value = toLocalDatetimeValueMed(new Date());
+                const med = (currentPatient.medicines || []).find(x => x.id === id);
+                if (dtInput) dtInput.value = toLocalDatetimeValueMed(computeMedDatetimeDefault(med));
             }
         });
     });
@@ -5067,6 +5094,11 @@
     myMedicinesList.querySelectorAll("input[data-med-unit-custom]").forEach(input => {
         input.addEventListener('change', () => persistMedDoseDefaults(input.getAttribute('data-med-unit-custom')));
     });
+    // Hora de toma: igual que la dosis, se guarda como predeterminada en
+    // cuanto se edita (con confirmacion si sustituye una hora ya guardada).
+    myMedicinesList.querySelectorAll("input[data-med-datetime]").forEach(input => {
+        input.addEventListener('change', () => persistMedTimeDefault(input.getAttribute('data-med-datetime')));
+    });
 
     // Guardar toma
     myMedicinesList.querySelectorAll("button[data-med-save]").forEach(btn => {
@@ -5093,21 +5125,81 @@
     });
 }
 
+// ---------- HORA POR DEFECTO Y CONFIRMACION DE VALORES PREDETERMINADOS ----------
+// Hora aproximada habitual para cada momento del dia, usada como valor de
+// partida para la hora de toma de un medicamento cuando ese medicamento
+// todavia no tiene su propia hora predeterminada (m.horaPredeterminada).
+const MEAL_DEFAULT_TIMES = {
+    breakfast: '08:00',
+    lunch: '14:00',
+    dinner: '21:00',
+    nighttime: '23:00'
+};
+function getMealDefaultTime(mealValue) {
+    return MEAL_DEFAULT_TIMES[mealValue] || '09:00';
+}
+
+// Devuelve una fecha (objeto Date) para HOY con la hora predeterminada del
+// medicamento aplicada, o la hora actual si el medicamento aun no tiene
+// ninguna hora predeterminada guardada. Se usa para precargar los campos de
+// fecha/hora al abrir los formularios de "Registrar toma" / "Toma omitida".
+function computeMedDatetimeDefault(med) {
+    const now = new Date();
+    if (med && med.horaPredeterminada) {
+        const parts = String(med.horaPredeterminada).split(':');
+        const hh = parseInt(parts[0], 10);
+        const mm = parseInt(parts[1], 10);
+        if (!isNaN(hh) && !isNaN(mm)) now.setHours(hh, mm, 0, 0);
+    }
+    return now;
+}
+
+// Actualiza un valor predeterminado del medicamento (dosis, unidad u hora
+// habitual de toma). Si el medicamento aun no tenia ningun valor guardado
+// para ese campo, se establece directamente (primera vez, sin preguntar).
+// Si ya existia un valor distinto, se pregunta antes de sobrescribirlo, para
+// no cambiar silenciosamente el habito registrado por una toma puntual
+// distinta (por ejemplo, tomar la pastilla mas tarde un dia concreto).
+function maybeUpdateMedDefault(med, field, newValue, label) {
+    if (!med || newValue === undefined || newValue === null || newValue === '') return false;
+    const current = med[field];
+    if (current === newValue) return false;
+    if (!current) {
+        med[field] = newValue;
+        return true;
+    }
+    const ok = confirm(
+        `Has indicado ${label} distinta a la habitual para "${med.nombre}" ` +
+        `(antes: ${current}, ahora: ${newValue}).\n\n¿Guardar este nuevo valor como predeterminado ` +
+        `para las proximas tomas?`
+    );
+    if (ok) {
+        med[field] = newValue;
+        return true;
+    }
+    return false;
+}
+
 function renderRecordMedicines() {
     const currentPatient = getCurrentPatient();
     const myMeds = currentPatient ? (currentPatient.medicines || []) : [];
     if (!recordMedicineBox || !recordMedicineList) return;
     recordMedicineBox.style.display = currentPatient ? '' : 'none';
     renderRecordMedicineCatalog();
+    const currentMealValue = recordMeal ? recordMeal.value : 'breakfast';
     recordMedicineList.innerHTML = myMeds.map(m => {
         const medId = escapeAttrMed(m.id);
         const dose = m.dosisPredeterminada || '';
         const unit = m.unidadPredeterminada || m.unidad || 'mg';
+        const hasOwnDefaultTime = !!m.horaPredeterminada;
+        const defaultTime = m.horaPredeterminada || getMealDefaultTime(currentMealValue);
         return `<div class="record-med-row">
             <label><input type="checkbox" data-record-med-taken="${medId}"> ${m.riesgo_hipo ? '<span class="hipo-dot-med"></span>' : ''}${escapeHtmlMed(m.nombre)}</label>
             <span class="record-med-dose-label">Dosis</span>
             <input type="number" step="any" value="${escapeAttrMed(dose)}" placeholder="Dosis" data-record-med-dose="${medId}">
             <span class="record-med-dose-label">${escapeHtmlMed(unit)}</span>
+            <span class="record-med-dose-label">Hora</span>
+            <input type="time" value="${escapeAttrMed(defaultTime)}" data-record-med-time="${medId}" data-auto-time="${hasOwnDefaultTime ? 'false' : 'true'}" title="Hora en que se tomo (o se tomara) este medicamento">
             <label class="record-med-missed"><input type="checkbox" data-record-med-missed="${medId}"> Hoy no tomé mis medicamentos</label>
         </div>`;
     }).join('');
@@ -5127,19 +5219,49 @@ function renderRecordMedicines() {
             }
         });
     });
-    // La dosis tecleada aqui tambien se guarda como predeterminada del
-    // medicamento (leyendo este mismo campo, no el del formulario de "Mis
-    // medicamentos"), para que no se pierda si no se llega a guardar el
-    // registro del dia o si se recarga la app antes de tiempo.
+    // La dosis tecleada aqui se compara con la dosis predeterminada del
+    // medicamento: si es la primera vez se guarda directamente, y si difiere
+    // de una ya existente se pregunta antes de sustituirla (ver
+    // maybeUpdateMedDefault). Esto evita que una dosis puntual distinta
+    // reemplace en silencio el habito registrado.
     recordMedicineList.querySelectorAll('[data-record-med-dose]').forEach(input => {
         input.addEventListener('change', () => {
             const medId = input.getAttribute('data-record-med-dose');
             const currentPatient = getCurrentPatient();
             const med = currentPatient && (currentPatient.medicines || []).find(m => m.id === medId);
             if (!med) return;
-            med.dosisPredeterminada = input.value.trim();
-            saveState();
+            const changed = maybeUpdateMedDefault(med, 'dosisPredeterminada', input.value.trim(), 'una dosis');
+            if (changed) saveState();
         });
+    });
+    // Hora de toma: igual que la dosis, se marca como "editada a mano"
+    // (data-auto-time="false") en cuanto el paciente la toca, para que un
+    // cambio posterior de "Hora / momento" ya no la sobrescriba; y al perder
+    // el foco se compara con la hora habitual del medicamento (ver
+    // maybeUpdateMedDefault).
+    recordMedicineList.querySelectorAll('[data-record-med-time]').forEach(input => {
+        input.addEventListener('input', () => { input.dataset.autoTime = 'false'; });
+        input.addEventListener('change', () => {
+            const medId = input.getAttribute('data-record-med-time');
+            const currentPatient = getCurrentPatient();
+            const med = currentPatient && (currentPatient.medicines || []).find(m => m.id === medId);
+            if (!med || !input.value) return;
+            const changed = maybeUpdateMedDefault(med, 'horaPredeterminada', input.value, 'una hora de toma');
+            if (changed) saveState();
+        });
+    });
+}
+
+// Al cambiar "Hora / momento" (recordMeal), actualiza la hora precargada de
+// los medicamentos que aun no tienen su propia hora predeterminada Y cuyo
+// campo de hora no se ha tocado a mano en este formulario (data-auto-time
+// sigue en "true"). Los medicamentos con hora predeterminada propia, o cuya
+// hora ya se edito manualmente, no se tocan.
+function updateAutoMedTimesForMeal() {
+    if (!recordMedicineList || !recordMeal) return;
+    const newTime = getMealDefaultTime(recordMeal.value);
+    recordMedicineList.querySelectorAll('[data-record-med-time][data-auto-time="true"]').forEach(input => {
+        input.value = newTime;
     });
 }
 
@@ -5206,15 +5328,22 @@ function collectRecordMedicationLogs(date) {
         const missed = recordMedicineList.querySelector(`[data-record-med-missed="${CSS.escape(medId)}"]`);
         if (!taken || !missed || (!taken.checked && !missed.checked)) return [];
         const doseInput = recordMedicineList.querySelector(`[data-record-med-dose="${CSS.escape(medId)}"]`);
+        const timeInput = recordMedicineList.querySelector(`[data-record-med-time="${CSS.escape(medId)}"]`);
         const dose = doseInput ? doseInput.value.trim() : '';
         const unit = m.unidadPredeterminada || m.unidad || 'mg';
+        // Hora exacta en la que se tomo (o se omitio) el medicamento: viene
+        // del campo de hora del formulario, o de la hora predeterminada del
+        // medicamento / momento del dia si por lo que sea el campo esta
+        // vacio. Nunca se deja a una hora fija arbitraria (antes: 12:00).
+        const timeVal = (timeInput && timeInput.value) ? timeInput.value :
+            (m.horaPredeterminada || getMealDefaultTime(recordMeal ? recordMeal.value : 'breakfast'));
         return [{
             id: 'mlog-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
             medId: m.id,
             nombre: m.nombre,
             dosis: missed.checked ? '—' : dose,
             unidad: missed.checked ? '' : unit,
-            fecha: new Date(date + 'T12:00:00').toISOString(),
+            fecha: new Date(date + 'T' + timeVal + ':00').toISOString(),
             omitida: missed.checked,
             nota: ''
         }];
@@ -5244,6 +5373,19 @@ function applyMedicationComplianceToForm(r) {
         const taken = recordMedicineList.querySelector(`[data-record-med-taken="${CSS.escape(medId)}"]`);
         const missed = recordMedicineList.querySelector(`[data-record-med-missed="${CSS.escape(medId)}"]`);
         const doseInput = recordMedicineList.querySelector(`[data-record-med-dose="${CSS.escape(medId)}"]`);
+        const timeInput = recordMedicineList.querySelector(`[data-record-med-time="${CSS.escape(medId)}"]`);
+        // Restaurar la hora exacta que se guardo en su momento (no la hora
+        // predeterminada actual del medicamento), y marcarla como "editada a
+        // mano" para que un cambio de "Hora / momento" al seguir editando
+        // este registro no la sobrescriba.
+        if (timeInput && entry.fecha) {
+            const d = new Date(entry.fecha);
+            if (!isNaN(d.getTime())) {
+                const pad = n => String(n).padStart(2, '0');
+                timeInput.value = pad(d.getHours()) + ':' + pad(d.getMinutes());
+                timeInput.dataset.autoTime = 'false';
+            }
+        }
         if (entry.omitida) {
             if (missed) missed.checked = true;
             if (taken) taken.checked = false;
@@ -5321,10 +5463,10 @@ function promptMedicationConfirmation() {
                     "T" + pad(date.getHours()) + ":" + pad(date.getMinutes());
             }
 
-// Guarda de inmediato, como valores predeterminados del medicamento, la
-// dosis y unidad que haya en su formulario (sin crear una entrada de toma).
-// Se llama al editar esos campos para que la dosis nunca dependa de que el
-// usuario pulse "Registrar toma".
+// Compara la dosis/unidad que haya en el formulario con la predeterminada
+// del medicamento. La primera vez se guarda directamente; si ya existia una
+// distinta, se pregunta antes de sustituirla (ver maybeUpdateMedDefault), en
+// vez de sobrescribirla en silencio.
 function persistMedDoseDefaults(medId) {
     const currentPatient = getCurrentPatient();
     if (!currentPatient) return;
@@ -5343,10 +5485,35 @@ function persistMedDoseDefaults(medId) {
     } else if (unitSelect) {
         unidad = unitSelect.value;
     }
-    med.dosisPredeterminada = dosis;
-    med.unidadPredeterminada = unidad;
-    saveState();
-    renderRecordMedicines();
+    let changed = false;
+    if (dosis) changed = maybeUpdateMedDefault(med, 'dosisPredeterminada', dosis, 'una dosis') || changed;
+    if (unidad) changed = maybeUpdateMedDefault(med, 'unidadPredeterminada', unidad, 'una unidad') || changed;
+    if (changed) {
+        saveState();
+        renderRecordMedicines();
+    }
+}
+
+// Igual que persistMedDoseDefaults pero para la hora de toma: compara la
+// hora indicada en el campo fecha/hora del formulario con la hora
+// predeterminada del medicamento y, si difiere, pregunta antes de
+// sustituirla (ver maybeUpdateMedDefault).
+function persistMedTimeDefault(medId) {
+    const currentPatient = getCurrentPatient();
+    if (!currentPatient) return;
+    const med = (currentPatient.medicines || []).find(m => m.id === medId);
+    if (!med) return;
+    const medIdSafe = String(medId).replace(/[^a-zA-Z0-9_-]/g, '_');
+    const form = document.getElementById('med-form-' + medIdSafe);
+    if (!form) return;
+    const dtInput = form.querySelector('input[data-med-datetime]');
+    if (!dtInput || !dtInput.value) return;
+    const timeVal = dtInput.value.slice(11, 16);
+    if (!timeVal) return;
+    if (maybeUpdateMedDefault(med, 'horaPredeterminada', timeVal, 'una hora de toma')) {
+        saveState();
+        renderRecordMedicines();
+    }
 }
 
 function addMedicationLog(medId, omitida) {
@@ -5406,9 +5573,15 @@ function addMedicationLog(medId, omitida) {
         return;
     }
 
-    // Guardar como predeterminado en el medicamento
-    med.dosisPredeterminada = dosis;
-    med.unidadPredeterminada = unidad;
+    // Guardar como predeterminado en el medicamento (si ya se habia
+    // preguntado al editar el campo, esto no vuelve a preguntar porque el
+    // valor ya coincide; si no, pregunta ahora antes de sustituir un
+    // predeterminado distinto - ver maybeUpdateMedDefault).
+    maybeUpdateMedDefault(med, 'dosisPredeterminada', dosis, 'una dosis');
+    maybeUpdateMedDefault(med, 'unidadPredeterminada', unidad, 'una unidad');
+    if (fechaVal) {
+        maybeUpdateMedDefault(med, 'horaPredeterminada', fechaVal.slice(11, 16), 'una hora de toma');
+    }
 
     const logEntry = {
         id: 'mlog-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
@@ -9003,27 +9176,43 @@ function shiftSampleDatasetToToday(data) {
                 });
             }
 
+            // Hora (HH:MM) de un registro de toma, en la zona horaria local.
+            // Devuelve cadena vacia si la fecha no es valida.
+            function formatLogTimeHM(fecha) {
+                const d = new Date(fecha);
+                if (isNaN(d.getTime())) return '';
+                return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+            }
+
             function formatMedicationForDate(date) {
                 const logs = getMedicationLogsForDate(date);
                 if (!logs.length) return '______';
                 return logs.map(log => {
+                    const time = formatLogTimeHM(log.fecha);
                     const status = log.omitida ? 'No' : 'Si';
                     const dose = log.omitida ? '' : ` (${log.dosis || ''} ${log.unidad || ''})`.replace(/\s+\)/, ')');
-                    return `${status}: ${log.nombre}${dose}`;
+                    return `${time ? time + ' - ' : ''}${status}: ${log.nombre}${dose}`;
                 }).join(' · ');
             }
 
-            // Igual que formatMedicationForDate, pero devuelve un array (una entrada
-            // por medicamento) en vez de una unica cadena unida con " · ". Se usa en
-            // el PDF para poder imprimir un salto de linea despues de cada medicamento
-            // y evitar que la linea se salga del margen cuando hay varios.
+            // Igual que formatMedicationForDate, pero devuelve un array de objetos
+            // {text, omitida} (uno por medicamento, con la hora exacta incluida en
+            // el texto) en vez de una unica cadena. Se usa en el PDF para poder
+            // imprimir un salto de linea despues de cada medicamento, evitar que la
+            // linea se salga del margen cuando hay varios, y colorear cada linea
+            // segun si la toma se realizo o se omitio.
             function getMedicationLinesForDate(date) {
                 const logs = getMedicationLogsForDate(date);
-                if (!logs.length) return ['______'];
+                if (!logs.length) return [{ text: '______', omitida: false, empty: true }];
                 return logs.map(log => {
+                    const time = formatLogTimeHM(log.fecha);
                     const status = log.omitida ? 'No' : 'Si';
                     const dose = log.omitida ? '' : ` (${log.dosis || ''} ${log.unidad || ''})`.replace(/\s+\)/, ')');
-                    return `${status}: ${log.nombre}${dose}`;
+                    return {
+                        text: `${time ? time + ' - ' : ''}${status}: ${log.nombre}${dose}`,
+                        omitida: !!log.omitida,
+                        empty: false
+                    };
                 });
             }
 
@@ -9031,6 +9220,26 @@ function shiftSampleDatasetToToday(data) {
                 const logs = getMedicationLogsForDate(date);
                 if (!logs.length) return '______';
                 return logs.map(log => log.omitida ? 'No' : 'Si').join(' / ');
+            }
+
+            // Version para el historial en pantalla: una "pastilla" de color por
+            // cada medicamento del dia, con la hora exacta y el nombre, en verde
+            // si se tomo y en rojo si se omitio (en vez del texto plano "Si/No").
+            function renderMedicationCellForDate(date) {
+                const logs = getMedicationLogsForDate(date);
+                if (!logs.length) {
+                    return '<span class="tag-cell medication-tag empty">______</span>';
+                }
+                return logs.map(log => {
+                    const time = formatLogTimeHM(log.fecha);
+                    const statusClass = log.omitida ? 'med-status-missed' : 'med-status-taken';
+                    const dose = (!log.omitida && log.dosis && log.dosis !== '—') ?
+                        ` (${escapeHtml(log.dosis)}${escapeHtml(log.unidad || '')})` : '';
+                    const label = log.omitida ?
+                        `${time ? time + ' · ' : ''}Omitida: ${escapeHtml(log.nombre)}` :
+                        `${time ? time + ' · ' : ''}${escapeHtml(log.nombre)}${dose}`;
+                    return `<span class="tag-cell medication-tag ${statusClass}" title="${escapeHtml(log.nombre)}">${label}</span>`;
+                }).join(' ');
             }
 
             function renderRecords() {
@@ -9091,7 +9300,7 @@ function shiftSampleDatasetToToday(data) {
                     const beforeDisplay = renderGlucoseValueCell(beforeVal, 'before', r);
                     const afterDisplay = renderGlucoseValueCell(afterVal, 'after', r);
                     const nightDisplay = renderGlucoseValueCell(nightVal, 'night', r);
-                    const medicationDisplay = formatMedicationStatusForDate(r.date);
+                    const medicationDisplay = renderMedicationCellForDate(r.date);
 
                     // Factores de confusion detectados para este registro (dieta,
                     // animo/fisico, y automaticos: temperatura, dosis omitida,
@@ -9099,8 +9308,6 @@ function shiftSampleDatasetToToday(data) {
                     // y para el tooltip de la fila.
                     const confoundEntries = getRecordConfoundEntries(r);
                     const confoundCatSet = new Set(confoundEntries.map(e => e.categoryId));
-                    const medConfoundClass = (confoundCatSet.has('dosis_omitida') || confoundCatSet.has('medicacion_nueva')) ?
-                        'confound-marker' : '';
 
                     // Ejercicio
                     let exDisplay = '______';
@@ -9180,7 +9387,7 @@ function shiftSampleDatasetToToday(data) {
                             <td>${beforeDisplay}</td>
                             <td>${afterDisplay}</td>
                             <td>${nightDisplay}</td>
-                            <td><span class="tag-cell medication-tag ${medicationDisplay === '______' ? 'empty' : medConfoundClass}">${escapeHtml(medicationDisplay)}</span></td>
+                            <td>${medicationDisplay}</td>
                             <td><span class="tag-cell exercise-tag ${exClass}">${exDisplay}</span></td>
                             <td><span class="tag-cell weather-tag ${weatherClass}">${weatherDisplay}</span></td>
                             <td><span class="tag-cell mood-tag ${moodClass}">${moodDisplay}</span></td>
@@ -14192,7 +14399,18 @@ function shiftSampleDatasetToToday(data) {
                                 let firstMedLine = true;
                                 for (const medLine of medicationLines) {
                                     const offset = firstMedLine ? 14 : 6;
-                                    const wrapped = doc.splitTextToSize(sanitizeForPDF(medLine), medWrapWidth - offset);
+                                    const wrapped = doc.splitTextToSize(sanitizeForPDF(medLine.text), medWrapWidth - offset);
+                                    // Color de la linea: verde si se tomo, rojo si se omitio,
+                                    // gris/negro normal si no hay medicacion ese dia. Asi la
+                                    // hora y el estado de cada toma se distinguen tambien en
+                                    // el PDF, no solo en el color del texto en pantalla.
+                                    if (medLine.empty) {
+                                        doc.setTextColor(0, 0, 0);
+                                    } else if (medLine.omitida) {
+                                        doc.setTextColor(163, 36, 44);
+                                    } else {
+                                        doc.setTextColor(31, 107, 69);
+                                    }
                                     wrapped.forEach((wline, idx) => {
                                         const prefix = (firstMedLine && idx === 0) ? '  Medicacion: ' : '    ';
                                         doc.text(prefix + wline, margin, y);
@@ -14204,6 +14422,7 @@ function shiftSampleDatasetToToday(data) {
                                     });
                                     firstMedLine = false;
                                 }
+                                doc.setTextColor(0, 0, 0);
                             }
                             doc.text(`  Ejercicio: ${sanitizeForPDF(exStr)}`, margin, y);
                             y += 4;
@@ -14746,6 +14965,7 @@ function shiftSampleDatasetToToday(data) {
             recordMeal.addEventListener('change', checkRecordSlotForDateMeal);
             if (editTodayRecordBtn) editTodayRecordBtn.addEventListener('click', editTodayRecord);
             recordMeal.addEventListener('change', updateNightGlucoseVisibility);
+            recordMeal.addEventListener('change', updateAutoMedTimesForMeal);
             if (recordsToggleBtn) recordsToggleBtn.addEventListener('click', () => {
                 showAllRecords = !showAllRecords;
                 renderRecords();
