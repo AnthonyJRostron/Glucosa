@@ -122,6 +122,14 @@
         onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js';"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"
         onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/18.0.13/lib/marked.umd.min.js"
+        onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/marked@18.0.13/lib/marked.umd.min.js';"></script>
+    <link rel="stylesheet" id="mdLightCss"
+        href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.6.1/github-markdown-light.min.css"
+        onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/github-markdown-css@5.6.1/github-markdown-light.min.css';">
+    <link rel="stylesheet" id="mdDarkCss" disabled
+        href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.6.1/github-markdown-dark.min.css"
+        onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/github-markdown-css@5.6.1/github-markdown-dark.min.css';">
     <style>
         /* ========== ESTILOS COMPLETOS ========== */
         * {
@@ -2025,6 +2033,19 @@
             font-size: 0.9rem;
             line-height: 1.6;
         }
+        /* El contenido de readme.md se renderiza con la libreria "marked" y se
+           le da el aspecto de GitHub con "github-markdown-css" (ver <link
+           id="mdLightCss"/"mdDarkCss"> en el <head>, que se activan segun el
+           tema claro/oscuro de la app). Se anula el fondo y el ancho maximo
+           propios de esa hoja de estilos para que herede los del modal en
+           lugar de dibujar su propia caja. */
+        .help-content .markdown-body {
+            background: transparent;
+            max-width: none;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e8edf4;
+        }
         .help-content h3 {
             color: #0b3b5c;
             margin-top: 18px;
@@ -3752,7 +3773,7 @@
             <button class="modal-close" id="helpModalClose">×</button>
             <h2>Ayuda y guia de la aplicacion</h2>
             <div class="help-content">
-                <div id="helpMarkdownContent">Cargando ayuda...</div>
+                <div id="helpMarkdownContent" class="markdown-body">Cargando ayuda...</div>
 
                 <h3>Valores de referencia de glucosa (por perfil clinico)</h3>
                 <div class="clinical-decision-banner" style="margin-bottom:14px;">
@@ -14853,71 +14874,14 @@ function shiftSampleDatasetToToday(data) {
             }
 
             // ---------- AYUDA: CARGA DE readme.md ----------
-            // El contenido de ayuda ya no esta escrito a mano en el HTML: se
-            // carga desde un archivo readme.md situado en la misma carpeta que
-            // este archivo (la "raiz" de la aplicacion) y se convierte a HTML
-            // con un conversor Markdown minimo (sin dependencias externas).
-            // Solo se descarga una vez por sesion (se guarda en helpMarkdownCache).
+            // El contenido de ayuda se carga desde un archivo readme.md situado
+            // en la misma carpeta que este archivo (la "raiz" de la aplicacion)
+            // y se convierte a HTML con la libreria "marked", con el aspecto
+            // visual de GitHub gracias a "github-markdown-css" (ver <link
+            // id="mdLightCss"/"mdDarkCss"> en el <head>, ligados al tema
+            // claro/oscuro de la app en setTheme()). Solo se descarga una vez
+            // por sesion (se guarda en helpMarkdownCache).
             let helpMarkdownCache = null;
-
-            // Conversor Markdown basico: titulos (#, ##, ###), negrita, cursiva,
-            // codigo en linea, bloques de codigo, listas (con y sin numeros),
-            // enlaces y parrafos. Cubre lo habitual en un README sin necesitar
-            // una libreria externa.
-            function renderMarkdownBasic(md) {
-                const escapeMd = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                const lines = md.replace(/\r\n/g, '\n').split('\n');
-                let html = '';
-                let inList = null; // 'ul' | 'ol' | null
-                let inCode = false;
-                let codeBuf = [];
-                const closeList = () => { if (inList) { html += `</${inList}>`; inList = null; } };
-                const inline = t => escapeMd(t)
-                    .replace(/`([^`]+)`/g, '<code>$1</code>')
-                    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-                    .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-                    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
-                for (const rawLine of lines) {
-                    const line = rawLine;
-                    if (/^```/.test(line.trim())) {
-                        if (inCode) {
-                            html += `<pre><code>${escapeMd(codeBuf.join('\n'))}</code></pre>`;
-                            codeBuf = [];
-                            inCode = false;
-                        } else {
-                            closeList();
-                            inCode = true;
-                        }
-                        continue;
-                    }
-                    if (inCode) { codeBuf.push(line); continue; }
-                    const h = line.match(/^(#{1,4})\s+(.*)$/);
-                    if (h) {
-                        closeList();
-                        const level = Math.min(h[1].length + 1, 5); // # -> h2, ## -> h3, etc.
-                        html += `<h${level}>${inline(h[2].trim())}</h${level}>`;
-                        continue;
-                    }
-                    const ol = line.match(/^\s*\d+[.)]\s+(.*)$/);
-                    const ul = line.match(/^\s*[-*+]\s+(.*)$/);
-                    if (ol) {
-                        if (inList !== 'ol') { closeList(); html += '<ol class="help-steps">'; inList = 'ol'; }
-                        html += `<li>${inline(ol[1])}</li>`;
-                        continue;
-                    }
-                    if (ul) {
-                        if (inList !== 'ul') { closeList(); html += '<ul>'; inList = 'ul'; }
-                        html += `<li>${inline(ul[1])}</li>`;
-                        continue;
-                    }
-                    if (!line.trim()) { closeList(); continue; }
-                    closeList();
-                    html += `<p>${inline(line.trim())}</p>`;
-                }
-                closeList();
-                if (inCode && codeBuf.length) html += `<pre><code>${escapeMd(codeBuf.join('\n'))}</code></pre>`;
-                return html;
-            }
 
             async function loadHelpMarkdown() {
                 const container = document.getElementById('helpMarkdownContent');
@@ -14930,19 +14894,11 @@ function shiftSampleDatasetToToday(data) {
                     const res = await fetch('readme.md', { cache: 'no-store' });
                     if (!res.ok) throw new Error('HTTP ' + res.status);
                     const text = await res.text();
-                    helpMarkdownCache = renderMarkdownBasic(text);
+                    helpMarkdownCache = (typeof marked !== 'undefined') ?
+                        marked.parse(text) : text;
                     container.innerHTML = helpMarkdownCache;
                 } catch (err) {
-                    // Motivo habitual: el archivo se abrio directamente desde el
-                    // disco (doble clic, file://) en vez de servirlo desde un
-                    // servidor web, y el navegador bloquea la lectura de otros
-                    // archivos locales en ese caso.
-                    container.innerHTML =
-                        '<p><strong>No se ha podido cargar readme.md.</strong></p>' +
-                        '<p>Comprueba que el archivo <code>readme.md</code> esta en la misma carpeta ' +
-                        'que esta aplicacion y que la estas abriendo desde un servidor web ' +
-                        '(no con doble clic / <code>file://</code>), ya que los navegadores bloquean ' +
-                        'por seguridad la lectura de otros archivos locales en ese modo.</p>';
+                    container.innerHTML = '<p>No se ha podido cargar readme.md.</p>';
                 }
             }
 
@@ -15109,6 +15065,10 @@ function shiftSampleDatasetToToday(data) {
                 document.documentElement.classList.toggle('dark-theme', isDark);
                 themeToggle.setAttribute('aria-checked', String(isDark));
                 safeStorageSet('glucosa-theme', isDark ? 'dark' : 'light');
+                const mdLightCss = document.getElementById('mdLightCss');
+                const mdDarkCss = document.getElementById('mdDarkCss');
+                if (mdLightCss) mdLightCss.disabled = isDark;
+                if (mdDarkCss) mdDarkCss.disabled = !isDark;
             }
             setTheme(document.documentElement.classList.contains('dark-theme'));
             themeToggle.addEventListener('click', () => {
