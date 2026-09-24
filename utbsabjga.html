@@ -3003,6 +3003,7 @@
                 <button class="btn btn-outline btn-sm" id="newPatientBtn" type="button">+ Nuevo paciente</button>
                 <button class="btn btn-outline btn-sm" id="importPatientBtn" type="button">Importar paciente</button>
                 <input type="file" id="importPatientFileInput" accept=".json,application/json" style="display:none;">
+                <button class="btn btn-outline btn-sm" id="backupPatientBtn" type="button">Copia de seguridad</button>
                 <button class="btn btn-outline btn-sm" id="changePatientBtn" type="button">Cambiar paciente</button>
             </summary>
 
@@ -4356,6 +4357,7 @@
             const newPatientBtn = $('newPatientBtn');
             const importPatientBtn = $('importPatientBtn');
             const importPatientFileInput = $('importPatientFileInput');
+            const backupPatientBtn = $('backupPatientBtn');
             const changePatientBtn = $('changePatientBtn');
             const patientSection = $('patientSection');
             const patientSummaryName = $('patientSummaryName');
@@ -10030,6 +10032,44 @@ function shiftSampleDatasetToToday(data) {
                 toast('Copia de seguridad (todos los pacientes) exportada correctamente', 'success');
             }
 
+            // Copia de seguridad de UN SOLO paciente (el que esta seleccionado
+            // actualmente), con sus datos y todos sus registros. El archivo
+            // generado tiene el mismo formato que espera "Importar paciente",
+            // asi que sirve tanto para guardar una copia como para restaurar
+            // ese paciente mas adelante (en este dispositivo o en otro).
+            function exportCurrentPatientBackup() {
+                const p = getCurrentPatient();
+                if (!p) {
+                    toast('No hay ningun paciente seleccionado.', 'error');
+                    return;
+                }
+                const records = getCurrentPatientRecords();
+                const data = {
+                    tipo: 'copia_seguridad_paciente',
+                    version: '10.1',
+                    exportedAt: new Date().toISOString(),
+                    patient: p,
+                    records: records
+                };
+                const patientLabel = (p.name || 'paciente')
+                    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                    .replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+                const filename = `copia_seguridad_${patientLabel || 'paciente'}_${todayStr()}.json`;
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                toast(
+                    `Copia de seguridad descargada en tu carpeta de Descargas con el nombre "${filename}".`,
+                    'success'
+                );
+            }
+
             function confirmFullDatasetImport() {
                 const multiPatient = Array.isArray(state.patients) && state.patients.length > 1;
                 if (!multiPatient) {
@@ -14966,6 +15006,10 @@ function shiftSampleDatasetToToday(data) {
                     importPatientJSON(e.target.files[0]);
                     e.target.value = '';
                 }
+            });
+            if (backupPatientBtn) backupPatientBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                exportCurrentPatientBackup();
             });
             if (changePatientBtn) changePatientBtn.addEventListener('click', (e) => {
                 e.preventDefault();
