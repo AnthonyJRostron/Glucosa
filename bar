@@ -1,0 +1,809 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#000000" />
+<title>Barcode &amp; QR Scanner</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: #000; color: #fff;
+    font: 16px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+
+  #stage { position: relative; flex: 1 1 auto; min-height: 0; background: #000; overflow: hidden; }
+
+  #video {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: contain; display: block; background: #000; z-index: 0;
+  }
+
+  #overlay { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 1; }
+  #rect {
+    position: absolute;
+    border: 2px solid rgba(255,255,255,0.85);
+    border-radius: 14px;
+    box-shadow: 0 0 0 9999px rgba(0,0,0,0.45);
+    transition: border-color .15s ease, box-shadow .15s ease;
+    opacity: 0;
+  }
+  #rect.on  { opacity: 1; }
+  #rect.hit {
+    border-color: #6ee7a8;
+    box-shadow: 0 0 0 9999px rgba(0,0,0,0.45), 0 0 22px rgba(110,231,168,0.75);
+  }
+  #rect.near {
+    border-color: #fbbf24;
+    box-shadow: 0 0 0 9999px rgba(0,0,0,0.45), 0 0 16px rgba(251,191,36,0.55);
+  }
+
+  #topbar {
+    position: absolute; top: 0; left: 0; right: 0;
+    padding: calc(10px + env(safe-area-inset-top)) 12px 0;
+    z-index: 2;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    pointer-events: none;
+  }
+  #modeToggle {
+    display: inline-flex; background: rgba(20,20,22,0.92);
+    border: 1px solid #2a2a2e; border-radius: 999px; padding: 3px;
+    pointer-events: auto;
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  }
+  #modeToggle button {
+    flex: 0 0 auto; border: 0; background: transparent; color: #9aa0a6;
+    font: inherit; font-size: 13px; font-weight: 600;
+    padding: 7px 16px; border-radius: 999px; cursor: pointer; min-width: 72px;
+  }
+  #modeToggle button.active { background: #1f6feb; color: #fff; }
+
+  #status {
+    font-size: 12px; color: #9aa0a6; text-align: center;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.95);
+  }
+
+  /* ---- on-screen event log ---- */
+  #logWrap {
+    width: 100%;
+    max-width: 460px;
+    background: rgba(0,0,0,0.72);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 6px 10px;
+    pointer-events: auto;
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+  }
+  #log {
+    margin: 0;
+    font-family: ui-monospace, monospace;
+    font-size: 10.5px;
+    line-height: 1.45;
+    color: #b8bcc2;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 62px;
+    overflow: hidden;
+  }
+  #log .err { color: #ef9a9a; }
+  #log .ok  { color: #6ee7a8; }
+  #log .warn{ color: #fbbf24; }
+
+  #panel {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 24px 16px calc(16px + env(safe-area-inset-bottom));
+    background: linear-gradient(transparent, rgba(0,0,0,.92) 35%);
+    max-height: 52%; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    z-index: 2;
+  }
+
+  #code {
+    font-size: clamp(20px, 7vw, 38px); font-weight: 700;
+    line-height: 1.15; text-align: center; word-break: break-all;
+    transition: color .12s ease;
+  }
+  #code.hit { color: #6ee7a8; }
+
+  #gs1 {
+    margin-top: 8px; font-size: 13px; color: #9aa0a6;
+    text-align: center; line-height: 1.6;
+  }
+
+  #product {
+    margin-top: 14px; padding-top: 12px; border-top: 1px solid #2a2a2e;
+    font-size: 14px; line-height: 1.5; color: #d0d0d5; display: none;
+  }
+  #product.visible { display: block; }
+  #product .name { font-size: 18px; font-weight: 700; color: #fff; text-align: center; }
+  #product .brand { color: #9aa0a6; text-align: center; }
+  #product .meta { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+  #product .badge { padding: 3px 8px; border-radius: 6px; background: #1c1c1f; font-size: 12px; color: #ccc; }
+  #product .badge.grade-a { background: #0f5132; color: #6ee7a8; }
+  #product .badge.grade-b { background: #3d5a00; color: #d4e157; }
+  #product .badge.grade-c { background: #6d5200; color: #ffd54f; }
+  #product .badge.grade-d { background: #7a2e00; color: #ffab91; }
+  #product .badge.grade-e { background: #6b1c1c; color: #ef9a9a; }
+  #product .error { color: #ef9a9a; font-size: 13px; text-align: center; }
+
+  #bar {
+    flex: 0 0 auto; display: flex; gap: 10px;
+    padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
+    background: #0b0b0c; border-top: 1px solid #1c1c1f;
+  }
+  #bar button {
+    flex: 1; padding: 15px 12px; font: inherit; font-size: 16px; font-weight: 600;
+    color: #fff; background: #1f6feb; border: 0; border-radius: 12px; cursor: pointer;
+  }
+  #bar button:disabled { background: #232326; color: #6b6b70; cursor: default; }
+</style>
+</head>
+<body>
+
+  <div id="stage">
+    <video id="video" playsinline muted autoplay></video>
+    <div id="overlay"><div id="rect"></div></div>
+
+    <div id="topbar">
+      <div id="modeToggle">
+        <button data-mode="qr">QR</button>
+        <button data-mode="barcode" class="active">Barcode</button>
+      </div>
+      <div id="status">Tap Start to scan</div>
+      <div id="logWrap"><pre id="log">ready.</pre></div>
+    </div>
+
+    <div id="panel">
+      <div id="code">—</div>
+      <div id="gs1"></div>
+      <div id="product">
+        <div class="name"></div>
+        <div class="brand"></div>
+        <div class="meta"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="bar">
+    <button id="start">Start</button>
+    <button id="stop" disabled>Stop</button>
+  </div>
+
+<script>
+(() => {
+  'use strict';
+
+  // ---------------------------------------------------------------- refs
+  const video     = document.getElementById('video');
+  const stage     = document.getElementById('stage');
+  const rectEl    = document.getElementById('rect');
+  const codeEl    = document.getElementById('code');
+  const gs1El     = document.getElementById('gs1');
+  const productEl = document.getElementById('product');
+  const nameEl    = productEl.querySelector('.name');
+  const brandEl   = productEl.querySelector('.brand');
+  const metaEl    = productEl.querySelector('.meta');
+  const statusEl  = document.getElementById('status');
+  const logEl     = document.getElementById('log');
+  const startBtn  = document.getElementById('start');
+  const stopBtn   = document.getElementById('stop');
+  const modeBtns  = document.querySelectorAll('#modeToggle button');
+
+  // ------------------------------------------------------------- constants
+  const MODE_FORMATS = {
+    qr:      ['qr_code', 'data_matrix', 'pdf417', 'aztec'],
+    barcode: ['ean_13', 'ean_8', 'upc_a', 'upc_e',
+              'code_128', 'code_39', 'code_93', 'itf', 'codabar']
+  };
+  const ALL_FORMATS = [...MODE_FORMATS.qr, ...MODE_FORMATS.barcode];
+
+  const OFF_BASE = 'https://world.openfoodfacts.org/api/v2/product/';
+  const CORS_PROXIES = [
+    { name: 'corsproxy.io',  build: (u) => 'https://corsproxy.io/?url=' + encodeURIComponent(u) },
+    { name: 'allorigins',    build: (u) => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u) },
+    { name: 'thingproxy',    build: (u) => 'https://thingproxy.freeboard.io/fetch/' + u }
+  ];
+
+  const ZXING_URLS = [
+    'https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js',
+    'https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js'
+  ];
+
+  const GS1_PREFIXES = {
+    '000':'US/Canada','001':'US/Canada','002':'US/Canada','003':'US/Canada',
+    '004':'US/Canada','005':'US/Canada','006':'US/Canada','007':'US/Canada',
+    '008':'US/Canada','009':'US/Canada','010':'US/Canada','011':'US/Canada',
+    '012':'US/Canada','013':'US/Canada','014':'US/Canada','015':'US/Canada',
+    '016':'US/Canada','017':'US/Canada','018':'US/Canada','019':'US/Canada',
+    '020':'US/Canada (restricted)','029':'US/Canada (restricted)',
+    '030':'US (GS1 US)','036':'US (GS1 US)','037':'US (GS1 US)',
+    '038':'US (GS1 US)','039':'US (GS1 US)','040':'US (GS1 US)',
+    '050':'US (GS1 US)','060':'US (GS1 US)','070':'US (GS1 US)',
+    '080':'US (GS1 US)','090':'US (GS1 US)','100':'US (GS1 US)',
+    '110':'US (GS1 US)','120':'US (GS1 US)','130':'US (GS1 US)',
+    '200':'Restricted distribution',
+    '300':'France','310':'France','320':'France','330':'France','340':'France',
+    '350':'France','360':'France','370':'France','380':'Bulgaria',
+    '400':'Germany','410':'Germany','420':'Germany','430':'Germany','440':'Germany',
+    '450':'Japan','460':'Russia','470':'Kyrgyzstan','480':'Philippines','490':'Japan',
+    '500':'UK','509':'UK',
+    '520':'Greece','530':'Cyprus','540':'Belgium/Luxembourg',
+    '560':'Portugal','570':'Denmark','590':'Poland',
+    '600':'South Africa','610':'Mauritius','620':'Tanzania',
+    '640':'Finland','690':'China','693':'China','694':'China',
+    '700':'Norway','729':'Israel','740':'Guatemala',
+    '750':'Mexico','760':'Switzerland','770':'Colombia',
+    '775':'Peru','779':'Argentina','780':'Chile',
+    '789':'Brazil','790':'Brazil',
+    '800':'Italy','810':'Italy','820':'Italy','830':'Italy',
+    '840':'Spain','850':'Cuba','858':'Slovakia',
+    '860':'Serbia','869':'Turkey','870':'Netherlands',
+    '880':'South Korea','885':'Thailand','888':'Singapore',
+    '890':'India','893':'Vietnam','899':'Indonesia',
+    '900':'Austria','910':'Austria','920':'Austria',
+    '930':'Australia','940':'New Zealand','950':'Taiwan',
+    '955':'Malaysia','958':'Macau'
+  };
+
+  const DETECT_INTERVAL   = 90;
+  const DEDUPE_MS         = 1500;
+  const REGION_MIN_OVERLAP= 0.30;   // 30% of the bbox must be inside the box
+  const LOG_MAX           = 5;
+  const DETECT_LOG_THROTTLE = 500;  // ms between detection log entries
+
+  // ---------------------------------------------------------------- state
+  let currentMode    = 'barcode';
+  let running        = false;
+  let rafId          = 0;
+  let busy           = false;
+  let lastTick       = 0;
+  let stream         = null;
+  let zxingReader    = null;
+  let lastText       = '';
+  let lastAt         = 0;
+  let lastLookupCode = '';
+  let lookupId       = 0;
+  let flashTimer     = 0;
+  let lastDetectLog  = 0;
+  let engine         = 'none';
+
+  // ---------------------------------------------------------------- log
+  const logLines = [];
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    }[c]));
+  }
+  function log(msg, cls) {
+    const t = new Date().toLocaleTimeString('en-GB', { hour12: false });
+    const line = '[' + t + '] ' + msg;
+    logLines.push(cls ? '<span class="' + cls + '">' + escapeHtml(line) + '</span>' : escapeHtml(line));
+    while (logLines.length > LOG_MAX) logLines.shift();
+    logEl.innerHTML = logLines.join('\n');
+  }
+  function logThrottled(msg, cls) {
+    const now = Date.now();
+    if (now - lastDetectLog < DETECT_LOG_THROTTLE) return;
+    lastDetectLog = now;
+    log(msg, cls);
+  }
+
+  function setStatus(t) { statusEl.textContent = t; }
+
+  function clearProduct() {
+    productEl.classList.remove('visible');
+    nameEl.textContent = '';
+    brandEl.textContent = '';
+    metaEl.innerHTML = '';
+  }
+
+  // ------------------------------------------------------------ GS1 parse
+  function parseGS1(raw) {
+    const code = String(raw).replace(/\D/g, '');
+    if (code.length !== 12 && code.length !== 13) return null;
+
+    const full         = code.length === 12 ? '0' + code : code;
+    const prefix       = full.substring(0, 3);
+    const manufacturer = full.substring(3, 8);
+    const productCode  = full.substring(8, 12);
+    const checkDigit   = full.substring(12, 13);
+
+    let sum = 0;
+    for (let i = 0; i < 12; i++) sum += Number(full[i]) * (i % 2 === 0 ? 1 : 3);
+    const calc  = (10 - (sum % 10)) % 10;
+    const valid = calc === Number(checkDigit);
+
+    let country = GS1_PREFIXES[prefix] || GS1_PREFIXES[prefix.substring(0, 2)] || null;
+
+    return {
+      full,
+      format: code.length === 12 ? 'UPC-A' : 'EAN-13',
+      prefix, manufacturer, productCode, checkDigit, valid,
+      country: country || 'Unknown / see GS1 prefix list'
+    };
+  }
+
+  function showGS1(parsed) {
+    if (!parsed) { gs1El.textContent = ''; return; }
+    gs1El.innerHTML =
+      parsed.format + ' · ' + (parsed.valid ? 'check digit OK' : 'check digit FAILED') + '<br>' +
+      'Region: ' + parsed.country +
+      ' · Mfr: ' + parsed.manufacturer +
+      ' · Product: ' + parsed.productCode;
+  }
+
+  // ------------------------------------------------------ Open Food Facts
+  async function fetchWithProxies(url) {
+    log('OFF: direct fetch…');
+    try {
+      const r = await fetch(url, {
+        headers: { 'User-Agent': 'BarcodeScanner/1.0' },
+        mode: 'cors'
+      });
+      if (r.ok) { log('OFF: direct OK', 'ok'); return r; }
+      log('OFF: direct HTTP ' + r.status, 'warn');
+    } catch (e) {
+      const m = e && e.message ? e.message : 'CORS/network';
+      log('OFF: direct blocked — ' + m, 'warn');
+    }
+
+    for (const p of CORS_PROXIES) {
+      log('OFF: via ' + p.name + '…');
+      try {
+        const r = await fetch(p.build(url));
+        if (r.ok) { log('OFF: ' + p.name + ' OK', 'ok'); return r; }
+        log('OFF: ' + p.name + ' HTTP ' + r.status, 'warn');
+      } catch (e) {
+        const m = e && e.message ? e.message : 'failed';
+        log('OFF: ' + p.name + ' — ' + m, 'warn');
+      }
+    }
+    throw new Error('All fetch attempts failed (CORS or network)');
+  }
+
+  function gradeClass(grade) {
+    if (!grade) return '';
+    const g = String(grade).toLowerCase();
+    return 'abcde'.indexOf(g) !== -1 ? 'grade-' + g : '';
+  }
+
+  function renderProduct(p) {
+    if (!p) { clearProduct(); return; }
+    nameEl.textContent = p.product_name || '(no name)';
+    brandEl.textContent = [p.brands, p.quantity].filter(Boolean).join(' · ');
+    metaEl.innerHTML = '';
+    if (p.nutrition_grades) {
+      const b = document.createElement('span');
+      b.className = 'badge ' + gradeClass(p.nutrition_grades);
+      b.textContent = 'Nutri-Score ' + p.nutrition_grades.toUpperCase();
+      metaEl.appendChild(b);
+    }
+    if (p.nova_group) {
+      const b = document.createElement('span');
+      b.className = 'badge';
+      b.textContent = 'NOVA ' + p.nova_group;
+      metaEl.appendChild(b);
+    }
+    productEl.classList.add('visible');
+  }
+
+  function renderProductError(msg) {
+    clearProduct();
+    nameEl.textContent = 'Lookup failed';
+    brandEl.textContent = msg;
+    metaEl.innerHTML = '';
+    productEl.classList.add('visible');
+  }
+
+  async function lookupOFF(barcode) {
+    const digits = String(barcode).replace(/\D/g, '');
+    if (digits.length !== 8 && digits.length !== 12 && digits.length !== 13) return;
+    if (digits === lastLookupCode) return;
+    lastLookupCode = digits;
+
+    const id = ++lookupId;
+    clearProduct();
+    setStatus('Looking up product…');
+    log('OFF lookup: ' + digits);
+
+    try {
+      const url = OFF_BASE + encodeURIComponent(digits) +
+        '?fields=product_name,brands,quantity,nutrition_grades,nova_group';
+      const res = await fetchWithProxies(url);
+
+      if (id !== lookupId) { log('OFF: stale response ignored'); return; }
+
+      if (!res.ok) {
+        log('OFF: HTTP ' + res.status, 'err');
+        setStatus('OFF HTTP ' + res.status);
+        renderProductError('HTTP ' + res.status);
+        return;
+      }
+
+      const data = await res.json();
+      if (id !== lookupId) return;
+
+      if (data.status !== 1 || !data.product) {
+        log('OFF: not found', 'warn');
+        setStatus('Not found in Open Food Facts');
+        return;
+      }
+
+      renderProduct(data.product);
+      log('OFF: found "' + (data.product.product_name || '') + '"', 'ok');
+      setStatus('Found in Open Food Facts');
+    } catch (err) {
+      if (id !== lookupId) return;
+      const m = err && err.message ? err.message : String(err);
+      log('OFF: ' + m, 'err');
+      setStatus('OFF lookup failed');
+      renderProductError(m);
+    }
+  }
+
+  // --------------------------------------------------- viewfinder region
+  function getRegion(mode, vw, vh) {
+    if (mode === 'qr') {
+      const side = Math.min(vw, vh) * 0.7;
+      return {
+        x: (vw - side) / 2 / vw,
+        y: (vh - side) / 2 / vh,
+        w: side / vw,
+        h: side / vh
+      };
+    }
+    return { x: 0.05, y: 0.30, w: 0.90, h: 0.40 };
+  }
+
+  function updateOverlay() {
+    const vw = video.videoWidth;
+    const vh = video.videoHeight;
+    if (!vw || !vh) { rectEl.classList.remove('on'); return; }
+
+    const cw = stage.clientWidth;
+    const ch = stage.clientHeight;
+    const scale = Math.min(cw / vw, ch / vh);
+    const dw = vw * scale, dh = vh * scale;
+    const dx = (cw - dw) / 2, dy = (ch - dh) / 2;
+
+    const r = getRegion(currentMode, vw, vh);
+    rectEl.style.left   = (dx + r.x * dw) + 'px';
+    rectEl.style.top    = (dy + r.y * dh) + 'px';
+    rectEl.style.width  = (r.w * dw) + 'px';
+    rectEl.style.height = (r.h * dh) + 'px';
+    rectEl.classList.add('on');
+  }
+
+  // Permissive check: pass if the bbox centre is inside the region OR if at
+  // least REGION_MIN_OVERLAP of the bbox area lies inside the region.
+  function checkRegion(bbox, vw, vh) {
+    if (!bbox || !vw || !vh) return { pass: false, reason: 'no bbox/size' };
+
+    const r = getRegion(currentMode, vw, vh);
+    const rx1 = r.x * vw, ry1 = r.y * vh;
+    const rx2 = rx1 + r.w * vw, ry2 = ry1 + r.h * vh;
+
+    const bx1 = bbox.x, by1 = bbox.y;
+    const bx2 = bbox.x + bbox.width, by2 = bbox.y + bbox.height;
+
+    const cx = (bx1 + bx2) / 2;
+    const cy = (by1 + by2) / 2;
+    const centerInside = cx >= rx1 && cx <= rx2 && cy >= ry1 && cy <= ry2;
+
+    const ox = Math.max(0, Math.min(rx2, bx2) - Math.max(rx1, bx1));
+    const oy = Math.max(0, Math.min(ry2, by2) - Math.max(ry1, by1));
+    const bboxArea = Math.max(1, bbox.width * bbox.height);
+    const overlap = (ox * oy) / bboxArea;
+
+    const pass = centerInside || overlap >= REGION_MIN_OVERLAP;
+    const reason = centerInside ? 'center inside' :
+                   (overlap >= REGION_MIN_OVERLAP ? 'overlap ' + overlap.toFixed(2) :
+                    'outside (overlap ' + overlap.toFixed(2) + ')');
+    return { pass, reason, overlap, centerInside };
+  }
+
+  function flashRect(kind) {
+    rectEl.classList.remove('hit', 'near');
+    void rectEl.offsetWidth;
+    rectEl.classList.add(kind);
+    clearTimeout(flashTimer);
+    flashTimer = setTimeout(() => rectEl.classList.remove('hit', 'near'),
+                            kind === 'hit' ? 450 : 250);
+  }
+
+  // --------------------------------------------------- format filtering
+  function formatMatchesMode(format, mode) {
+    const f = String(format || '').toLowerCase().replace(/-/g, '_');
+    return MODE_FORMATS[mode].indexOf(f) !== -1;
+  }
+
+  // ---------------------------------------------------------- show value
+  function show(text) {
+    const now = Date.now();
+    if (text === lastText && now - lastAt < DEDUPE_MS) return;
+    lastText = text;
+    lastAt = now;
+
+    codeEl.textContent = text;
+    codeEl.classList.add('hit');
+    setTimeout(() => codeEl.classList.remove('hit'), 400);
+
+    const parsed = parseGS1(text);
+    showGS1(parsed);
+    if (navigator.vibrate) navigator.vibrate(35);
+
+    log('DECODED: ' + text.substring(0, 40) + (text.length > 40 ? '…' : ''), 'ok');
+
+    if (parsed) {
+      lookupOFF(text);
+    } else {
+      clearProduct();
+      lastLookupCode = '';
+    }
+  }
+
+  // ------------------------------------------------------- script loading
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = src; s.async = true;
+      s.onload = () => resolve();
+      s.onerror = () => { s.remove(); reject(new Error('Failed to load ' + src)); };
+      document.head.appendChild(s);
+    });
+  }
+
+  async function loadZXing() {
+    if (window.ZXing) return window.ZXing;
+    let lastErr;
+    for (const url of ZXING_URLS) {
+      try {
+        log('ZXing: loading…');
+        await loadScript(url);
+        if (window.ZXing) { log('ZXing: loaded', 'ok'); return window.ZXing; }
+      } catch (e) { lastErr = e; log('ZXing: load failed', 'warn'); }
+    }
+    throw lastErr || new Error('ZXing could not be loaded');
+  }
+
+  // -------------------------------------------- engine 1: BarcodeDetector
+  async function startNative() {
+    let formats = ALL_FORMATS;
+    if (typeof BarcodeDetector.getSupportedFormats === 'function') {
+      const supported = await BarcodeDetector.getSupportedFormats();
+      const filtered  = ALL_FORMATS.filter(f => supported.indexOf(f) !== -1);
+      if (filtered.length) formats = filtered;
+      log('Native formats: ' + formats.length + ' supported');
+    }
+
+    const detector = new BarcodeDetector({ formats });
+    log('Native detector created');
+
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
+    });
+    log('Camera stream acquired');
+
+    video.srcObject = stream;
+    await video.play();
+    await waitForVideoSize();
+    log('Video ' + video.videoWidth + '×' + video.videoHeight);
+
+    const loop = async () => {
+      if (!running) return;
+      const now = performance.now();
+      if (!busy && now - lastTick >= DETECT_INTERVAL) {
+        lastTick = now; busy = true;
+        try {
+          const codes = await detector.detect(video);
+          handleNativeResults(codes);
+        } catch (e) {
+          logThrottled('Detect error: ' + (e.message || e), 'err');
+        }
+        busy = false;
+      }
+      rafId = requestAnimationFrame(loop);
+    };
+    loop();
+  }
+
+  function handleNativeResults(codes) {
+    if (!codes || !codes.length) return;
+    const vw = video.videoWidth, vh = video.videoHeight;
+
+    let hit = null, outsideReason = '';
+
+    for (const c of codes) {
+      if (!c || !c.rawValue) continue;
+      const fmt = c.format;
+      if (!formatMatchesMode(fmt, currentMode)) {
+        logThrottled('Detected ' + fmt + ' (filtered by mode)', 'warn');
+        continue;
+      }
+      const check = checkRegion(c.boundingBox, vw, vh);
+      if (check.pass) { hit = c; break; }
+      outsideReason = check.reason;
+    }
+
+    if (hit) {
+      flashRect('hit');
+      show(hit.rawValue);
+    } else if (outsideReason) {
+      flashRect('near');
+      logThrottled('Detected outside box: ' + outsideReason, 'warn');
+    }
+  }
+
+  // ------------------------------------------------ engine 2: ZXing fallback
+  async function startZXing() {
+    const ZX = await loadZXing();
+    if (!running) return;
+
+    const hints = new Map();
+    hints.set(ZX.DecodeHintType.TRY_HARDER, true);
+    const formats = [];
+    for (const name of ALL_FORMATS) {
+      const key = name.toUpperCase().replace(/-/g, '_');
+      if (ZX.BarcodeFormat[key] !== undefined) formats.push(ZX.BarcodeFormat[key]);
+    }
+    hints.set(ZX.DecodeHintType.POSSIBLE_FORMATS, formats);
+    log('ZXing formats: ' + formats.length);
+
+    zxingReader = new ZX.BrowserMultiFormatReader(hints, 150);
+
+    await zxingReader.decodeFromConstraints(
+      { audio: false, video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } } },
+      video,
+      (result) => {
+        if (!running || !result) return;
+        handleZXingResult(result, ZX);
+      }
+    );
+    log('ZXing reader started');
+    await waitForVideoSize();
+  }
+
+  function handleZXingResult(result, ZX) {
+    const fmtRaw = result.getBarcodeFormat();
+    const fmtName = ZX.BarcodeFormat[fmtRaw] || String(fmtRaw);
+    if (!formatMatchesMode(fmtName, currentMode)) {
+      logThrottled('ZXing: ' + fmtName + ' filtered by mode', 'warn');
+      return;
+    }
+
+    const points = result.getResultPoints();
+    if (!points || !points.length) {
+      logThrottled('ZXing: no result points', 'warn');
+      return;
+    }
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const p of points) {
+      const x = p.getX(), y = p.getY();
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+      if (x > maxX) maxX = x;
+      if (y > maxY) maxY = y;
+    }
+    const bbox = { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+
+    const vw = video.videoWidth, vh = video.videoHeight;
+    if (!vw || !vh) {
+      logThrottled('ZXing: video size not ready', 'warn');
+      return;
+    }
+
+    const check = checkRegion(bbox, vw, vh);
+    if (check.pass) {
+      flashRect('hit');
+      show(result.getText());
+    } else {
+      flashRect('near');
+      logThrottled('ZXing outside box: ' + check.reason, 'warn');
+    }
+  }
+
+  function waitForVideoSize() {
+    return new Promise((resolve) => {
+      if (video.videoWidth && video.videoHeight) { updateOverlay(); return resolve(); }
+      let tries = 0;
+      const tick = () => {
+        if (video.videoWidth && video.videoHeight) { updateOverlay(); resolve(); }
+        else if (tries++ < 40) setTimeout(tick, 50);
+        else resolve();
+      };
+      tick();
+    });
+  }
+
+  // ------------------------------------------------------------- lifecycle
+  async function start() {
+    if (running) return;
+    running = true;
+    startBtn.disabled = true;
+    stopBtn.disabled = false;
+    codeEl.textContent = '—';
+    gs1El.textContent = '';
+    clearProduct();
+    lastText = '';
+    lastLookupCode = '';
+    log('--- start ---');
+
+    if ('BarcodeDetector' in window) {
+      try {
+        engine = 'native';
+        setStatus('Scanning · native');
+        log('Engine: native BarcodeDetector');
+        await startNative();
+        return;
+      } catch (err) {
+        const m = err && err.message ? err.message : String(err);
+        log('Native failed: ' + m, 'err');
+        if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+        video.srcObject = null;
+        if (!running) return;
+      }
+    } else {
+      log('Native BarcodeDetector not available', 'warn');
+    }
+
+    try {
+      engine = 'zxing';
+      setStatus('Loading decoder…');
+      log('Engine: ZXing fallback');
+      await startZXing();
+      if (running) setStatus('Scanning · ZXing');
+    } catch (err) {
+      const m = err && err.message ? err.message : String(err);
+      log('Start failed: ' + m, 'err');
+      setStatus('Error: ' + m);
+      stop();
+    }
+  }
+
+  function stop() {
+    running = false;
+    engine = 'none';
+    if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+    busy = false;
+    if (zxingReader) { try { zxingReader.reset(); } catch (_) {} zxingReader = null; }
+    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+    try { video.pause(); } catch (_) {}
+    video.srcObject = null;
+    rectEl.classList.remove('on', 'hit', 'near');
+    startBtn.disabled = false;
+    stopBtn.disabled = true;
+    setStatus('Stopped');
+    log('--- stopped ---');
+  }
+
+  function setMode(mode) {
+    if (mode !== 'qr' && mode !== 'barcode') return;
+    currentMode = mode;
+    modeBtns.forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+    updateOverlay();
+    clearTimeout(flashTimer);
+    rectEl.classList.remove('hit', 'near');
+    log('Mode: ' + mode);
+  }
+
+  // ------------------------------------------------------------- wiring
+  startBtn.addEventListener('click', start);
+  stopBtn.addEventListener('click', stop);
+  modeBtns.forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+
+  window.addEventListener('resize', updateOverlay);
+  window.addEventListener('orientationchange', () => setTimeout(updateOverlay, 200));
+  video.addEventListener('loadedmetadata', updateOverlay);
+
+  window.addEventListener('pagehide', () => { if (running) stop(); });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && running) stop();
+  });
+})();
+</script>
+</body>
+</html>
