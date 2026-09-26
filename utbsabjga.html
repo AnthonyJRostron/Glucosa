@@ -2984,6 +2984,47 @@
             border-color: #7cc5dc;
             box-shadow: 0 0 0 2px rgba(124, 197, 220, 0.25);
         }
+
+        /* ============ PRESION ARTERIAL (integrado desde HBP.html) ============ */
+        .bp-toggle-row { display: flex; align-items: center; gap: 10px; }
+        .bp-switch { position: relative; display: inline-block; width: 42px; height: 24px; flex-shrink: 0; }
+        .bp-switch input { opacity: 0; width: 0; height: 0; }
+        .bp-switch .bp-slider { position: absolute; cursor: pointer; inset: 0; background: #c7d6e2;
+            border-radius: 24px; transition: .2s; }
+        .bp-switch .bp-slider::before { position: absolute; content: ""; height: 18px; width: 18px;
+            left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: .2s;
+            box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+        .bp-switch input:checked + .bp-slider { background: #1e6f9f; }
+        .bp-switch input:checked + .bp-slider::before { transform: translateX(18px); }
+        .bp-toggle-label { font-size: .85rem; color: #1e4a6b; font-weight: 600; }
+        .bp-toggle-hint { font-size: .72rem; color: #6a8aa5; display: block; margin-top: 2px; }
+
+        .bp-reading-badge { display: inline-block; padding: 2px 9px; border-radius: 20px;
+            font-weight: 700; font-size: .82rem; cursor: help; min-width: 40px; text-align: center; }
+        .bp-reading-optimal { background: #b7e4c7; color: #1b4d2e; }
+        .bp-reading-normal { background: #d8f3dc; color: #2d6a4f; }
+        .bp-reading-high { background: #ffe8b3; color: #8a5a00; }
+        .bp-reading-hypertension { background: #ffb3b3; color: #7a1f1f; }
+        .bp-reading-hypertension-severe { background: #ff7a7a; color: #4d0f0f; }
+        .bp-trend-arrow { font-size: .7rem; display: inline-flex; align-items: center; justify-content: center;
+            width: 16px; height: 16px; border-radius: 50%; margin-left: 3px; cursor: help; }
+        .bp-trend-up { background: #ffe0e0; color: #c0392b; }
+        .bp-trend-down { background: #e0f0e0; color: #27823e; }
+        .bp-trend-stable { background: #e8eef3; color: #5f7d99; }
+        .bp-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: .8rem; margin: 8px 0 12px;
+            align-items: center; color: #1e4a6b; }
+        .bp-legend .bp-legend-box { display: inline-block; width: 18px; height: 13px; border-radius: 8px;
+            vertical-align: middle; margin-right: 4px; }
+        .bp-stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 10px;
+            margin: 10px 0 16px; }
+        .bp-stat-card { background: #f4f9fd; border: 1px solid #dae8f2; border-radius: 12px; padding: 10px 14px; }
+        .bp-stat-card .bp-stat-value { font-size: 1.3rem; font-weight: 700; color: #0b3b5c; }
+        .bp-stat-card .bp-stat-label { font-size: .72rem; color: #5f7d99; }
+        html.dark-theme .bp-toggle-label { color: #dfeaf5; }
+        html.dark-theme .bp-toggle-hint { color: #8fa9bd; }
+        html.dark-theme .bp-stat-card { background: #1a2633; border-color: #2c3e4d; }
+        html.dark-theme .bp-stat-card .bp-stat-value { color: #dfeaf5; }
+        html.dark-theme .bp-legend { color: #dfeaf5; }
     </style>
 </head>
 <body>
@@ -3138,6 +3179,18 @@
                         </label>
                     </div>
                     <div class="form-group" style="flex:0 0 auto;align-self:flex-end;">
+                        <div class="bp-toggle-row">
+                            <label class="bp-switch">
+                                <input type="checkbox" id="bpEnabledToggle">
+                                <span class="bp-slider"></span>
+                            </label>
+                            <span>
+                                <span class="bp-toggle-label">Monitorizar presion arterial</span>
+                                <span class="bp-toggle-hint">Opcional; se guarda al momento, por paciente</span>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="form-group" style="flex:0 0 auto;align-self:flex-end;">
                         <button class="btn btn-primary btn-sm" id="saveClinicalProfileBtn" type="button">Guardar
                             perfil clinico</button>
                     </div>
@@ -3186,17 +3239,65 @@
         <details class="patient-card medicine-collapsible" id="medicineSection" open="">
             <summary style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
                 <h3 style="font-size:1rem;color:#0b3b5c;margin:0;">Medicamentos</h3>
-                <span id="medCatalogStatus" class="weather-status success" style="font-size:0.72rem;">Catalogo: 565 medicamentos</span>
+                <span id="medCatalogStatus" class="weather-status info" style="font-size:0.72rem;">Catalogo: no cargado</span>
             </summary>
 
-            <p class="cp-help" style="margin-bottom:8px;">
-                Busca y anade los medicamentos que tomas. Solo se guardan en este dispositivo los medicamentos que anadas, no el catalogo completo.
-                El catalogo CIMA se busca primero en el directorio local (<code>cima-diabetes.json</code>), luego en
-                una copia de respaldo en linea y, si ninguna esta disponible, se pide seleccionar el archivo manualmente.
+            <p class="cp-help" style="margin-bottom:8px;font-size:0.78rem;color:#5e7a93;">
+                Busca y anade los medicamentos que toma el paciente. <strong>El catalogo completo NO se guarda en
+                este dispositivo</strong>: solo se guardan los medicamentos que anadas a cada paciente. El catalogo
+                vive en memoria mientras la pagina esta abierta; puedes descargarlo desde CIMA por categoria,
+                cargarlo desde un archivo <code>CIMA-general.json</code>, o guardarlo a un JSON para reutilizarlo
+                mas tarde sin volver a descargar.
             </p>
 
             <!-- Medicamentos actuales del paciente (resumen rapido en la parte superior) -->
             <div id="medCurrentSummary" class="med-current-summary" style="display:none;"></div>
+
+            <div class="cima-download-panel" style="background:#f4f9fd;border:1px solid #dae8f2;border-radius:12px;padding:10px 12px;margin-bottom:12px;">
+                <div class="flex-wrap" style="align-items:flex-end;gap:10px;">
+                    <div class="form-group" style="flex:1 1 190px;margin:0;">
+                        <label for="cimaFilterMode">Modo de descarga</label>
+                        <select id="cimaFilterMode">
+                            <option value="ATC" selected>Por grupo ATC (recomendado)</option>
+                            <option value="CATEGORY">Por categoria clinica</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="cimaAtcGroup" style="flex:1 1 230px;margin:0;">
+                        <label for="cimaAtcFilter">Grupo ATC a descargar</label>
+                        <select id="cimaAtcFilter">
+                            <option value="CURATED" selected>Relevante cardiovascular/diabetes (~2.000)</option>
+                            <option value="A10">A10 - Diabetes</option>
+                            <option value="C02">C02 - Antihipertensivos</option>
+                            <option value="C03">C03 - Diureticos</option>
+                            <option value="C07">C07 - Betabloqueantes</option>
+                            <option value="C08">C08 - Calcioantagonistas</option>
+                            <option value="C09">C09 - IECA / ARA-II</option>
+                            <option value="C10">C10 - Hipolipemiantes</option>
+                            <option value="B01">B01 - Antitromboticos</option>
+                            <option value="ALL">TODOS (~15.000) - lento</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="cimaCategoryGroup" style="flex:1 1 250px;margin:0;display:none;">
+                        <label for="cimaCategoryFilter">Categoria clinica</label>
+                        <select id="cimaCategoryFilter"></select>
+                        <div id="cimaCategoryGroups" style="font-size:0.68rem;color:#6a8aa5;margin-top:2px;"></div>
+                    </div>
+                </div>
+                <div class="flex-wrap" style="gap:8px;margin-top:10px;">
+                    <button class="btn btn-primary btn-xs" id="cimaDownloadBtn" type="button">Descargar catalogo</button>
+                    <button class="btn btn-outline btn-xs" id="cimaCancelBtn" type="button" style="display:none;">Cancelar</button>
+                    <button class="btn btn-outline btn-xs" id="cimaLoadLocalBtn" type="button">Cargar CIMA-general.json</button>
+                    <button class="btn btn-outline btn-xs" id="cimaSaveJsonBtn" type="button">Guardar catalogo JSON</button>
+                    <button class="btn btn-outline btn-xs" id="medBrowseBtn" type="button">Seleccionar archivo manualmente</button>
+                    <input type="file" id="medFileInput" accept=".json,application/json" style="display:none">
+                </div>
+                <div id="cimaProgress" style="display:none;height:6px;background:#dae8f2;border-radius:4px;margin-top:8px;overflow:hidden;">
+                    <div id="cimaProgressBar" style="height:100%;width:0%;background:#1e6f9f;transition:width .2s;"></div>
+                </div>
+                <div id="cimaStatusText" style="font-size:0.72rem;color:#6a8aa5;margin-top:6px;">
+                    El catalogo vive solo en memoria. Elige una categoria y pulsa "Descargar catalogo".
+                </div>
+            </div>
 
             <div class="form-group" style="margin-bottom:8px;">
                 <label for="medSearchInput">Buscar medicamento <span class="hint">(nombre, marca o principio activo)</span></label>
@@ -3204,12 +3305,6 @@
             </div>
 
             <div id="medCatalogList" class="med-catalog-box"></div>
-
-            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
-                <button class="btn btn-outline btn-xs" id="medReloadBtn" type="button">Recargar catalogo</button>
-                <button class="btn btn-outline btn-xs" id="medBrowseBtn" type="button">Seleccionar archivo manualmente</button>
-                <input type="file" id="medFileInput" accept=".json,application/json" style="display:none">
-            </div>
 
             <div class="med-section-subtitle">
                 Mis medicamentos <span class="count" id="myMedCount">0</span>
@@ -3454,6 +3549,56 @@
             <button class="btn btn-outline btn-sm history-toggle" id="recordsToggleBtn" type="button" style="">Mostrar todas las mediciones</button>
         </section>
 
+        <!-- PRESION ARTERIAL (opcional, integrado desde HBP.html) -->
+        <section id="bpSection" style="display:none;">
+            <hr class="divider">
+            <h2 style="margin:0 0 10px;">Presion arterial</h2>
+            <div class="bp-legend">
+                <span><span class="bp-legend-box" style="background:#b7e4c7;"></span>Optima &lt;120/80</span>
+                <span><span class="bp-legend-box" style="background:#d8f3dc;"></span>Normal</span>
+                <span><span class="bp-legend-box" style="background:#ffe8b3;"></span>Normal-alta</span>
+                <span><span class="bp-legend-box" style="background:#ffb3b3;"></span>Hipertension</span>
+                <span><span class="bp-legend-box" style="background:#ff7a7a;"></span>HTA severa</span>
+            </div>
+            <div class="grid-3">
+                <div class="form-group">
+                    <label>Fecha</label>
+                    <input type="date" id="bpRegDate">
+                </div>
+                <div class="form-group">
+                    <label>Hora</label>
+                    <input type="time" id="bpRegTime">
+                </div>
+                <div class="form-group">
+                    <label>Pulso (opcional)</label>
+                    <input type="number" id="bpRegPulse" placeholder="ej. 72" min="20" max="250">
+                </div>
+                <div class="form-group">
+                    <label>Sistolica (mmHg)</label>
+                    <input type="number" id="bpRegSystolic" placeholder="ej. 120" min="50" max="250">
+                </div>
+                <div class="form-group">
+                    <label>Diastolica (mmHg)</label>
+                    <input type="number" id="bpRegDiastolic" placeholder="ej. 80" min="30" max="150">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Notas (opcional)</label>
+                <textarea id="bpRegNotes" placeholder="ej. tras el ejercicio, con dolor de cabeza..."></textarea>
+            </div>
+            <div class="flex-wrap" style="margin-bottom:10px;">
+                <button class="btn btn-success" id="bpAddBtn" type="button">Agregar</button>
+                <button class="btn btn-outline" id="bpCancelEditBtn" type="button" style="display:none;">Cancelar
+                    edicion</button>
+            </div>
+            <div class="flex-between">
+                <h3 style="margin:0;">Historial de presion <span class="badge" id="bpHistoryCount">0</span></h3>
+                <button class="btn btn-outline btn-sm history-toggle" id="bpToggleHistoryBtn" type="button"
+                    style="display:none;">Mostrar todas las lecturas</button>
+            </div>
+            <div id="bpRecordsList"></div>
+        </section>
+
         <!-- FOOTER -->
         <hr class="divider">
         <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;font-size:0.8rem;color:#6a8aa5;">
@@ -3672,6 +3817,21 @@
                     la media, y si afecto por igual a los tres momentos del dia. Mismo convenio que el grafico
                     anterior (caja = P25-P75, linea = mediana, rombo = media, bigotes = minimo-maximo real). Por
                     defecto se muestran todas las lecturas; el filtro de arriba es opcional.</p>
+            </div>
+
+            <!-- Presion arterial (opcional, integrado desde HBP.html) -->
+            <div id="bpAnalysisSection" style="display:none;">
+                <hr class="divider">
+                <h3 class="chart-title-label">Presion arterial</h3>
+                <div id="bpStatsGrid" class="bp-stats-grid"></div>
+                <div class="chart-wrapper" id="bpChartWrapper" style="height:240px;">
+                    <canvas id="bpChart"></canvas>
+                </div>
+                <p class="chart-caption">Evolucion de la presion sistolica y diastolica (mmHg) en el periodo
+                    filtrado. Categorias segun ESC/ESH 2023: optima &lt;120/80, normal 120-129/80-84, normal-alta
+                    130-139/85-89, hipertension 140-179/90-109, hipertension severa &gt;=180/110. Estos umbrales
+                    diagnosticos no varian por edad ni por sexo; la edad y el sexo solo influyen en los objetivos
+                    clinicos de tratamiento, no en esta clasificacion.</p>
             </div>
 
             <!-- Weather Insights -->
@@ -3960,6 +4120,12 @@
                 patients: [],
                 currentPatientId: null,
                 records: [],
+                // Lecturas de presion arterial (opcional por paciente, ver patient.bpEnabled).
+                // Mismo esquema que "records": array plano con patientId, no anidado por paciente,
+                // para que el resto del codigo (filtros, import/export) siga un patron conocido.
+                bpRecords: [],
+                bpEditingId: null,
+                bpChartInstance: null,
                 editingId: null,
                 chartInstance: null,
                 mealChartInstance: null,
@@ -4062,6 +4228,10 @@
                     pregnancyCategory: '', // type1_pregnancy | gestational | type2_pregnancy (solo si pregnant)
                     glucoseUnit: 'mgdl', // mgdl | mmol
                     customTarget: null, // { lowerMgdl, upperMgdl, tirTargetPct, label } | null
+                    // ---- Presion arterial (opcional, integrado desde HBP.html) ----
+                    // Si es false, la seccion de presion arterial permanece oculta y sus
+                    // lecturas (state.bpRecords) no se muestran, aunque puedan existir.
+                    bpEnabled: false,
                     // ---- Medicamentos (integrado desde Get-medicine.html) ----
                     medicines: [], // [{id, nombre, principio_activo, laboratorio, clase, via, unidad, riesgo_hipo, posibles_dosis, dosisPredeterminada, unidadPredeterminada, horaPredeterminada}]
                     medicationLog: [] // [{id, medId, nombre, dosis, unidad, fecha, omitida, nota}]
@@ -4126,6 +4296,12 @@
             // Toda la app (listado, filtros, estadisticas, graficos, exportacion) parte de aqui.
             function getCurrentPatientRecords() {
                 return state.records.filter(r => r.patientId === state.currentPatientId);
+            }
+
+            // Lecturas de presion arterial del paciente actual (ver patient.bpEnabled).
+            // Mismo patron que getCurrentPatientRecords(), para la seccion opcional de BP.
+            function getCurrentPatientBpRecords() {
+                return state.bpRecords.filter(r => r.patientId === state.currentPatientId);
             }
 
             // ---------- ESTADOS DE ANIMO Y SINTOMAS FISICOS (ampliado) ----------
@@ -4511,9 +4687,21 @@
             const medicineLogList = $('medicineLogList');
             const myMedCount = $('myMedCount');
             const medLogCount = $('medLogCount');
-            const medReloadBtn = $('medReloadBtn');
             const medBrowseBtn = $('medBrowseBtn');
             const medFileInput = $('medFileInput');
+            const cimaFilterMode = $('cimaFilterMode');
+            const cimaAtcGroup = $('cimaAtcGroup');
+            const cimaAtcFilter = $('cimaAtcFilter');
+            const cimaCategoryGroup = $('cimaCategoryGroup');
+            const cimaCategoryFilter = $('cimaCategoryFilter');
+            const cimaCategoryGroups = $('cimaCategoryGroups');
+            const cimaDownloadBtn = $('cimaDownloadBtn');
+            const cimaCancelBtn = $('cimaCancelBtn');
+            const cimaLoadLocalBtn = $('cimaLoadLocalBtn');
+            const cimaSaveJsonBtn = $('cimaSaveJsonBtn');
+            const cimaProgress = $('cimaProgress');
+            const cimaProgressBar = $('cimaProgressBar');
+            const cimaStatusText = $('cimaStatusText');
             const medCurrentSummary = $('medCurrentSummary');
             const medicineSection = $('medicineSection');
             const recordMedicineBox = $('recordMedicineBox');
@@ -4660,40 +4848,85 @@
                 medCatalogStatus.className = 'weather-status success';
             }
 
-            // Origen del catalogo CIMA al iniciar:
-            // 1) Descarga de una copia nueva desde la API oficial de CIMA (AEMPS).
-            // 2) SOLO si esa descarga falla: el archivo cima-diabetes.json del mismo directorio.
-            // Si ambos fallan, "Recargar catalogo" reintenta y "Seleccionar archivo manualmente"
-            // permite elegir el JSON a mano.
+            // ---- Descarga bajo demanda desde CIMA (integrado desde HBP.html) ----
+            // El catalogo NUNCA se descarga solo ni se guarda en localStorage: vive en
+            // memoria (variable medicineCatalog) mientras la pestana esta abierta, y el
+            // usuario decide cuando descargarlo (por grupo ATC o categoria clinica),
+            // cargarlo desde un archivo, o guardarlo a JSON para reutilizarlo despues.
             const CIMA_API_BASE = "https://cima.aemps.es/cima/rest/";
-            const CIMA_ATC_FILTER = "A10"; // A10: farmacos usados en la diabetes
             const CIMA_CONCURRENCY = 8;
+            const CIMA_LOCAL_FILENAME = 'CIMA-general.json';
+            let cimaDownloadAbort = null;
 
-            // Peticion GET "simple" (sin cabeceras ni cache: "no-store"): no provoca preflight CORS.
-            async function cimaGetJson(path, params) {
-                const controller = new AbortController();
-                const timer = setTimeout(() => controller.abort(), 20000);
-                try {
-                    const response = await fetch(CIMA_API_BASE + path + "?" + new URLSearchParams(params).toString(),
-                        { signal: controller.signal });
-                    if (!response.ok) throw new Error("HTTP " + response.status);
-                    return await response.json();
-                } finally {
-                    clearTimeout(timer);
+            // Grupos ATC ya relevantes para diabetes + cardiovascular (opcion "recomendada"),
+            // y categorias clinicas mas amplias por si se necesita otro tipo de medicamento.
+            const CIMA_CURATED_GROUPS = ['C01', 'C02', 'C03', 'C04', 'C05', 'C07', 'C08', 'C09', 'C10', 'A10', 'B01'];
+            const CIMA_CATEGORIES = {
+                'cardiovascular': { label: 'Cardiovascular (corazon, presion, lipidos)', groups: ['C01', 'C02', 'C03', 'C04', 'C05', 'C07', 'C08', 'C09', 'C10'] },
+                'diabetes': { label: 'Diabetes', groups: ['A10'] },
+                'antitrombotico': { label: 'Antitromboticos / anticoagulantes', groups: ['B01'] },
+                'antibioticos': { label: 'Antibioticos', groups: ['J01', 'J02', 'J04'] },
+                'antiviral': { label: 'Antivirales', groups: ['J05'] },
+                'antifungico': { label: 'Antifungicos', groups: ['J02A', 'D01B'] },
+                'analgesico': { label: 'Analgesicos y antiinflamatorios', groups: ['N02', 'M01'] },
+                'corticoide': { label: 'Corticosteroides', groups: ['H02'] },
+                'antidepresivo': { label: 'Antidepresivos', groups: ['N06A'] },
+                'ansiolitico': { label: 'Ansioliticos e hipnoticos', groups: ['N05B', 'N05C'] },
+                'antipsicotico': { label: 'Antipsicoticos', groups: ['N05A'] },
+                'antiepileptico': { label: 'Antiepilepticos / antimaniacos', groups: ['N03', 'N05AN'] },
+                'antihistaminico': { label: 'Antihistaminicos', groups: ['R06'] },
+                'respiratorio': { label: 'Respiratorio (asma, EPOC, tos)', groups: ['R01', 'R02', 'R03', 'R05', 'R06', 'R07'] },
+                'digestivo': { label: 'Digestivo (IBP, antiacidos, laxantes)', groups: ['A02', 'A03', 'A06', 'A07'] },
+                'tiroides': { label: 'Tiroides', groups: ['H03'] },
+                'osteoporosis': { label: 'Osteoporosis y metabolismo oseo', groups: ['M05'] },
+                'urologico': { label: 'Urologico (prostata, vejiga)', groups: ['G04'] },
+                'ginecologico': { label: 'Ginecologico y hormonas sexuales', groups: ['G01', 'G02', 'G03'] },
+                'oftalmologico': { label: 'Oftalmologico', groups: ['S01'] },
+                'otologico': { label: 'Otorrinolaringologico', groups: ['S02'] },
+                'dermatologico': { label: 'Dermatologico', groups: ['D01', 'D02', 'D03', 'D04', 'D05', 'D06', 'D07', 'D08', 'D09', 'D10', 'D11'] },
+                'neurologico': { label: 'Neurologico (Parkinson, Alzheimer, migrana)', groups: ['N04', 'N06D', 'N02C'] },
+                'hematologico': { label: 'Hematologico (anemia, factores)', groups: ['B02', 'B03', 'B05', 'B06'] },
+                'inmunosupresor': { label: 'Inmunosupresores y moduladores', groups: ['L01', 'L03', 'L04'] },
+                'antiparasitario': { label: 'Antiparasitarios', groups: ['P01', 'P02', 'P03'] }
+            };
+
+            function resolveAtcGroups(mode, filter) {
+                if (mode === 'ATC') {
+                    if (filter === 'ALL') return null;
+                    if (filter === 'CURATED') return CIMA_CURATED_GROUPS.slice();
+                    return [filter];
                 }
+                if (mode === 'CATEGORY') {
+                    const cat = CIMA_CATEGORIES[filter];
+                    if (!cat) return null;
+                    return cat.groups.slice();
+                }
+                return null;
             }
 
-            // map con concurrencia limitada que conserva el orden
-            async function mapWithConcurrency(items, limit, fn) {
+            // Peticion GET "simple" (sin cabeceras ni cache: "no-store"): no provoca preflight CORS.
+            async function cimaGetJson(path, params, signal) {
+                const url = CIMA_API_BASE + path + "?" + new URLSearchParams(params).toString();
+                const response = await fetch(url, { signal });
+                if (!response.ok) throw new Error("HTTP " + response.status);
+                return await response.json();
+            }
+
+            // map con concurrencia limitada que conserva el orden y respeta la cancelacion.
+            async function mapWithConcurrency(items, limit, fn, signal) {
                 const results = new Array(items.length);
                 let next = 0;
+                let cancelled = false;
                 async function worker() {
-                    while (next < items.length) {
+                    while (next < items.length && !cancelled) {
+                        if (signal && signal.aborted) { cancelled = true; return; }
                         const i = next++;
-                        results[i] = await fn(items[i], i);
+                        try { results[i] = await fn(items[i], i); }
+                        catch (e) { results[i] = null; }
                     }
                 }
                 await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+                if (cancelled) throw new DOMException('Aborted', 'AbortError');
                 return results;
             }
 
@@ -4706,78 +4939,169 @@
                 renderMedicineCatalog();
             }
 
-            async function tryFetchMedicineCatalog(url) {
-                const response = await fetch(url);
-                if (!response.ok) throw new Error("HTTP " + response.status);
-                applyMedicineCatalog(await response.json());
+            function cimaProgressUpdate(pct, text) {
+                if (cimaProgressBar) cimaProgressBar.style.width = Math.max(0, Math.min(100, pct)) + '%';
+                if (text && cimaStatusText) cimaStatusText.textContent = text;
             }
 
-            // Descarga el listado de medicamentos comercializados con ATC A10 y, para cada uno, su ficha
-            // (principios activos con cantidad, ATC, vias). Si la ficha de alguno falla, se usa su
-            // entrada del listado (nombre, laboratorio, dosis y via).
-            async function downloadMedicineCatalogFromCima() {
-                const query = { atc: CIMA_ATC_FILTER, comerc: 1, autorizados: 1 };
-                const first = await cimaGetJson("medicamentos", Object.assign({ pagina: 1 }, query));
-                const list = Array.isArray(first.resultados) ? first.resultados.slice() : [];
-                if (!list.length) throw new Error("CIMA no devolvio medicamentos.");
-                const perPage = list.length;
-                const pages = Math.min(Math.ceil((first.totalFilas || perPage) / perPage), 80);
-                const pageNumbers = [];
-                for (let p = 2; p <= pages; p++) pageNumbers.push(p);
-                updateMedCatalogStatus("CIMA: descargando listado (" + pages + " paginas)...");
-                const extra = await mapWithConcurrency(pageNumbers, CIMA_CONCURRENCY, p =>
-                    cimaGetJson("medicamentos", Object.assign({ pagina: p }, query)));
-                for (const page of extra) if (page && Array.isArray(page.resultados)) list.push(...page.resultados);
-
-                const unique = [];
-                const seen = new Set();
-                for (const m of list) {
-                    if (m && m.nregistro && !seen.has(m.nregistro)) { seen.add(m.nregistro); unique.push(m); }
-                }
-
-                let done = 0;
-                const detailed = await mapWithConcurrency(unique, CIMA_CONCURRENCY, async (item) => {
-                    let out = item;
-                    try {
-                        const d = await cimaGetJson("medicamento", { nregistro: item.nregistro });
-                        if (d && d.nregistro) out = d;
-                    } catch (e) { /* se conserva la entrada del listado */ }
-                    done++;
-                    if (done % 10 === 0 || done === unique.length) {
-                        updateMedCatalogStatus("CIMA: descargando fichas " + done + "/" + unique.length + "...");
+            // Descarga bajo demanda: solo se ejecuta cuando el usuario pulsa "Descargar
+            // catalogo", nunca automaticamente. mode/filter vienen del selector de la UI
+            // (grupo ATC concreto, seleccion "recomendada" cardiovascular+diabetes,
+            // categoria clinica, o el catalogo completo).
+            async function downloadCatalogFromCima(mode, filter) {
+                const atcGroups = resolveAtcGroups(mode, filter);
+                const controller = new AbortController();
+                cimaDownloadAbort = controller;
+                if (cimaProgress) cimaProgress.style.display = 'block';
+                if (cimaCancelBtn) cimaCancelBtn.style.display = 'inline-flex';
+                if (cimaDownloadBtn) cimaDownloadBtn.disabled = true;
+                let list = [];
+                try {
+                    if (atcGroups) {
+                        for (let gi = 0; gi < atcGroups.length; gi++) {
+                            const atc = atcGroups[gi];
+                            cimaProgressUpdate((gi / atcGroups.length) * 40,
+                                `CIMA: listado del grupo ${atc} (${gi + 1}/${atcGroups.length})...`);
+                            const query = { atc, comerc: 1, autorizados: 1 };
+                            const first = await cimaGetJson("medicamentos", Object.assign({ pagina: 1 }, query), controller.signal);
+                            const firstList = Array.isArray(first.resultados) ? first.resultados : [];
+                            if (!firstList.length) continue;
+                            list.push(...firstList);
+                            const perPage = firstList.length;
+                            const pages = Math.min(Math.ceil((first.totalFilas || perPage) / perPage), 80);
+                            if (pages > 1) {
+                                const pageNumbers = [];
+                                for (let p = 2; p <= pages; p++) pageNumbers.push(p);
+                                const rest = await mapWithConcurrency(pageNumbers, CIMA_CONCURRENCY,
+                                    p => cimaGetJson("medicamentos", Object.assign({ pagina: p }, query), controller.signal),
+                                    controller.signal);
+                                for (const pg of rest) if (pg && Array.isArray(pg.resultados)) list.push(...pg.resultados);
+                            }
+                        }
+                    } else {
+                        cimaProgressUpdate(2, 'CIMA: contando medicamentos totales...');
+                        const first = await cimaGetJson("medicamentos", { pagina: 1, comerc: 1, autorizados: 1 }, controller.signal);
+                        const firstList = Array.isArray(first.resultados) ? first.resultados : [];
+                        if (!firstList.length) throw new Error("CIMA no devolvio medicamentos.");
+                        list.push(...firstList);
+                        const perPage = firstList.length;
+                        const pages = Math.min(Math.ceil((first.totalFilas || perPage) / perPage), 200);
+                        cimaProgressUpdate(5, `CIMA: descargando listado (${pages} paginas)...`);
+                        const pageNumbers = [];
+                        for (let p = 2; p <= pages; p++) pageNumbers.push(p);
+                        let done = 0;
+                        const rest = await mapWithConcurrency(pageNumbers, CIMA_CONCURRENCY, async (p) => {
+                            const pg = await cimaGetJson("medicamentos", { pagina: p, comerc: 1, autorizados: 1 }, controller.signal);
+                            done++;
+                            cimaProgressUpdate(5 + (done / pageNumbers.length) * 35, `CIMA: listado ${done}/${pageNumbers.length} paginas...`);
+                            return pg;
+                        }, controller.signal);
+                        for (const pg of rest) if (pg && Array.isArray(pg.resultados)) list.push(...pg.resultados);
                     }
-                    return out;
-                });
-                applyMedicineCatalog(detailed);
+                    const seen = new Set();
+                    const unique = [];
+                    for (const m of list) {
+                        if (m && m.nregistro && !seen.has(m.nregistro)) { seen.add(m.nregistro); unique.push(m); }
+                    }
+                    if (!unique.length) throw new Error("No se obtuvo ningun medicamento.");
+                    cimaProgressUpdate(42, `CIMA: descargando fichas detalladas (0/${unique.length})...`);
+                    let fdone = 0;
+                    const detailed = await mapWithConcurrency(unique, CIMA_CONCURRENCY, async (item) => {
+                        let out = item;
+                        try {
+                            const d = await cimaGetJson("medicamento", { nregistro: item.nregistro }, controller.signal);
+                            if (d && d.nregistro) out = d;
+                        } catch (e) { /* se conserva la entrada del listado */ }
+                        fdone++;
+                        if (fdone % 5 === 0 || fdone === unique.length) {
+                            cimaProgressUpdate(42 + (fdone / unique.length) * 55, `CIMA: fichas ${fdone}/${unique.length}...`);
+                        }
+                        return out;
+                    }, controller.signal);
+                    applyMedicineCatalog(detailed);
+                    cimaProgressUpdate(100, `Catalogo en memoria: ${medicineCatalog.length} medicamentos.`);
+                    toast(`Catalogo cargado en memoria: ${medicineCatalog.length} medicamentos`, 'success');
+                    setTimeout(() => { if (cimaProgress) cimaProgress.style.display = 'none'; }, 2500);
+                } catch (e) {
+                    if (e && e.name === 'AbortError') {
+                        cimaProgressUpdate(0, 'Descarga cancelada.');
+                        toast('Descarga cancelada', 'info');
+                    } else {
+                        console.error('Error descargando catalogo CIMA:', e);
+                        cimaProgressUpdate(0, 'Error: ' + e.message + ' - puedes usar "Cargar CIMA-general.json" o el archivo manual.');
+                        toast('Error al descargar catalogo: ' + e.message, 'error');
+                    }
+                } finally {
+                    cimaDownloadAbort = null;
+                    if (cimaDownloadBtn) cimaDownloadBtn.disabled = false;
+                    if (cimaCancelBtn) cimaCancelBtn.style.display = 'none';
+                }
             }
 
-            async function loadMedicineCatalogAuto() {
-                // 1) Copia nueva desde CIMA
-                updateMedCatalogStatus("CIMA: descargando una copia nueva...");
-                try {
-                    await downloadMedicineCatalogFromCima();
-                    toast("Catalogo CIMA actualizado: " + medicineCatalog.length + " medicamentos", "success");
-                    return;
-                } catch (e) {
-                    console.warn("No se pudo descargar el catalogo desde CIMA (" + CIMA_API_BASE + "):", e);
-                }
+            // Carga desde un archivo del mismo directorio (sin descargar nada de internet).
+            // Se mantiene "cima-diabetes.json" como candidato para no romper instalaciones
+            // que ya tuvieran ese archivo preparado antes de esta integracion.
+            function loadLocalCatalog() {
+                const candidates = [CIMA_LOCAL_FILENAME, 'cima-all.json', MEDICINE_CIMA_JSON];
+                (async () => {
+                    for (const name of candidates) {
+                        try {
+                            const res = await fetch(name, { cache: 'no-store' });
+                            if (!res.ok) continue;
+                            const data = await res.json();
+                            applyMedicineCatalog(data);
+                            toast(`Catalogo cargado desde ${name}: ${medicineCatalog.length} medicamentos`, 'success');
+                            return;
+                        } catch (e) { /* probar el siguiente */ }
+                    }
+                    toast(`No se encontro ${CIMA_LOCAL_FILENAME} en la carpeta de la app.`, 'error');
+                })();
+            }
 
-                // 2) Solo ahora, el archivo local en el mismo directorio. Si la pagina se abrio con
-                //    doble clic (file://), el navegador no permite leer otros archivos locales con
-                //    fetch(), asi que se avisa en vez de intentarlo en vano.
-                if (window.location.protocol === "file:") {
-                    updateMedCatalogStatus('CIMA: la descarga ha fallado y, al abrir la pagina como archivo (file://), el navegador no deja leer cima-diabetes.json automaticamente. Pulsa "Seleccionar archivo manualmente" o abre la pagina desde un servidor (http://).');
+            function saveCatalogToJson() {
+                if (!medicineCatalogLoaded || !medicineCatalog.length) {
+                    toast('No hay catalogo cargado para guardar.', 'error');
                     return;
                 }
-                updateMedCatalogStatus("CIMA: la descarga ha fallado, usando cima-diabetes.json del directorio local...");
                 try {
-                    await tryFetchMedicineCatalog(MEDICINE_CIMA_JSON);
-                    return;
+                    const meta = {
+                        tipo: 'CIMA_general_catalog',
+                        version: 1,
+                        exportedAt: new Date().toISOString(),
+                        count: medicineCatalog.length,
+                        note: 'Catalogo CIMA (AEMPS). Cargable con "Cargar CIMA-general.json".'
+                    };
+                    const payload = Object.assign({}, meta, { medicamentos: medicineCatalog });
+                    const json = JSON.stringify(payload);
+                    const blob = new Blob([json], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `CIMA-general_${todayStr()}_${medicineCatalog.length}med.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    const sizeMB = (blob.size / (1024 * 1024)).toFixed(2);
+                    toast(`Catalogo guardado (${medicineCatalog.length} medicamentos, ${sizeMB} MB)`, 'success');
                 } catch (e) {
-                    console.warn("No se pudo cargar cima-diabetes.json del directorio local:", e);
+                    console.error('Error guardando catalogo JSON:', e);
+                    toast('Error al guardar el catalogo: ' + e.message, 'error');
                 }
+            }
 
-                updateMedCatalogStatus('No se pudo cargar el catalogo CIMA (ni en linea ni local). Pulsa "Recargar catalogo" o selecciona el archivo manualmente.');
+            function populateCategorySelector() {
+                const sel = cimaCategoryFilter;
+                if (!sel) return;
+                const entries = Object.entries(CIMA_CATEGORIES).sort((a, b) => a[1].label.localeCompare(b[1].label, 'es'));
+                sel.innerHTML = entries.map(([key, cat]) => `<option value="${key}">${escapeHtmlMed(cat.label)}</option>`).join('');
+                updateCategoryGroupsHint();
+            }
+            function updateCategoryGroupsHint() {
+                if (!cimaCategoryFilter) return;
+                const key = cimaCategoryFilter.value;
+                const cat = CIMA_CATEGORIES[key];
+                if (cimaCategoryGroups) cimaCategoryGroups.textContent = cat ? 'ATC: ' + cat.groups.join(', ') : '';
             }
 
             function loadMedicineCatalogFromFile(file) {
@@ -4832,7 +5156,7 @@
 
             function renderMedicineCatalog() {
                 if (!medicineCatalogLoaded) {
-                    medCatalogList.innerHTML = '<p class="med-empty">Catalogo no cargado. Pulsa "Recargar catalogo" o "Seleccionar archivo manualmente".</p>';
+                    medCatalogList.innerHTML = '<p class="med-empty">Catalogo no cargado. Elige una categoria arriba y pulsa "Descargar catalogo", o "Cargar CIMA-general.json" / "Seleccionar archivo manualmente".</p>';
                     renderRecordMedicineCatalog();
                     return;
                 }
@@ -5677,6 +6001,316 @@ function addMedicationLog(medId, omitida) {
 
             function getSeverityClass(sev) {
                 return `severity-${sev}`;
+            }
+
+            // ================================================================
+            // PRESION ARTERIAL (integrado desde HBP.html) - opcional por paciente
+            // ================================================================
+            // Categorias de presion arterial en consulta/domicilio segun las guias
+            // ESC/ESH 2023 (European Heart Journal) y ACC/AHA 2017, que coinciden en
+            // los puntos de corte de "hipertension" (>=140/90) y en NO ajustar el
+            // diagnostico por edad ni por sexo: los mismos umbrales se aplican a todos
+            // los adultos. La edad y el sexo si influyen en las guias clinicas, pero
+            // solo en los OBJETIVOS de tratamiento (ej. metas mas flexibles en mayores
+            // fragiles), nunca en donde se traza la linea diagnostica. Por simplicidad
+            // de la insignia visual, "Hipertension" agrupa los grados 1 y 2 de ESC/ESH
+            // (140-179/90-109); la crisis/grado 3 (>=180/110) se distingue aparte.
+            //   Optima          < 120 / < 80
+            //   Normal          120-129 / 80-84
+            //   Normal-alta     130-139 / 85-89
+            //   Hipertension    140-179 / 90-109   (grados 1-2 ESC/ESH)
+            //   HTA severa      >= 180 / >= 110     (grado 3 / crisis hipertensiva)
+            function getBpThresholds() {
+                return {
+                    sys: { optimal: 120, normal: 130, high: 140, hypertension: 180 },
+                    dia: { optimal: 80, normal: 85, high: 90, hypertension: 110 }
+                };
+            }
+            function getBpCategory(v, t) {
+                if (v == null || isNaN(v)) return null;
+                if (v < t.optimal) return 'optimal';
+                if (v < t.normal) return 'normal';
+                if (v < t.high) return 'high';
+                if (v < t.hypertension) return 'hypertension';
+                return 'hypertension-severe';
+            }
+            const BP_CATEGORY_LABELS = {
+                optimal: 'Optima', normal: 'Normal', high: 'Normal-alta',
+                hypertension: 'Hipertension', 'hypertension-severe': 'HTA severa'
+            };
+            function getBpTrend(cur, prev, thresholdPercent = 5) {
+                if (prev == null || cur == null || isNaN(prev) || isNaN(cur)) return 'none';
+                const diff = cur - prev;
+                const pct = Math.abs(diff) / prev * 100;
+                if (pct < thresholdPercent || Math.abs(diff) <= 1) return 'stable';
+                return diff > 0 ? 'up' : 'down';
+            }
+            function bpTrendArrowHtml(trend) {
+                if (trend === 'none') return '';
+                const labels = { up: 'Subio respecto a la lectura anterior', down: 'Bajo respecto a la lectura anterior', stable: 'Estable respecto a la lectura anterior' };
+                const arrows = { up: '▲', down: '▼', stable: '●' };
+                const cls = { up: 'bp-trend-up', down: 'bp-trend-down', stable: 'bp-trend-stable' };
+                return `<span class="bp-trend-arrow ${cls[trend]}" title="${labels[trend]}">${arrows[trend]}</span>`;
+            }
+            function bpRecordTimestamp(r) { return `${r.date}T${r.time || '00:00'}`; }
+
+            function generateBpId() {
+                return 'bp_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+            }
+
+            function isBpEnabledForCurrentPatient() {
+                const p = getCurrentPatient();
+                return !!(p && p.bpEnabled);
+            }
+
+            // Se llama al marcar/desmarcar el interruptor de presion arterial del
+            // paciente actual. Persiste de inmediato (no requiere pulsar "Guardar
+            // perfil clinico"), igual que pide la integracion.
+            function toggleBpEnabledForCurrentPatient(checked) {
+                const p = getCurrentPatient();
+                if (!p) return;
+                p.bpEnabled = !!checked;
+                saveState();
+                updateBpSectionVisibility();
+                if (p.bpEnabled) {
+                    renderBpRecords();
+                    if (graphsModal && !graphsModal.classList.contains('closed')) renderBpAnalysis();
+                }
+                toast(p.bpEnabled ?
+                    'Monitorizacion de presion arterial activada para este paciente' :
+                    'Monitorizacion de presion arterial desactivada para este paciente', 'info');
+            }
+
+            function updateBpSectionVisibility() {
+                const enabled = isBpEnabledForCurrentPatient();
+                const bpSection = document.getElementById('bpSection');
+                if (bpSection) bpSection.style.display = enabled ? '' : 'none';
+                const bpAnalysisSection = document.getElementById('bpAnalysisSection');
+                if (bpAnalysisSection) bpAnalysisSection.style.display = enabled ? '' : 'none';
+                const bpToggle = document.getElementById('bpEnabledToggle');
+                if (bpToggle) bpToggle.checked = enabled;
+            }
+
+            function clearBpForm() {
+                state.bpEditingId = null;
+                const d = document.getElementById('bpRegDate');
+                const t = document.getElementById('bpRegTime');
+                const sys = document.getElementById('bpRegSystolic');
+                const dia = document.getElementById('bpRegDiastolic');
+                const pulse = document.getElementById('bpRegPulse');
+                const notes = document.getElementById('bpRegNotes');
+                if (d) d.value = todayStr();
+                if (t) t.value = new Date().toTimeString().slice(0, 5);
+                if (sys) sys.value = '';
+                if (dia) dia.value = '';
+                if (pulse) pulse.value = '';
+                if (notes) notes.value = '';
+                const addBtn = document.getElementById('bpAddBtn');
+                const cancelBtn = document.getElementById('bpCancelEditBtn');
+                if (addBtn) addBtn.innerHTML = 'Agregar';
+                if (cancelBtn) cancelBtn.style.display = 'none';
+            }
+
+            function addOrUpdateBpRecord() {
+                const p = getCurrentPatient();
+                if (!p) { toast('Selecciona un paciente primero', 'error'); return; }
+                const date = document.getElementById('bpRegDate').value;
+                const time = document.getElementById('bpRegTime').value || '08:00';
+                const systolic = numericValue(document.getElementById('bpRegSystolic').value);
+                const diastolic = numericValue(document.getElementById('bpRegDiastolic').value);
+                const pulse = numericValue(document.getElementById('bpRegPulse').value);
+                const notes = (document.getElementById('bpRegNotes').value || '').trim();
+                if (!date || systolic === null || diastolic === null) {
+                    toast('Completa fecha, sistolica y diastolica', 'error');
+                    return;
+                }
+                if (systolic < 50 || systolic > 250 || diastolic < 30 || diastolic > 150) {
+                    toast('Los valores introducidos estan fuera de un rango plausible. Revisalos.', 'error');
+                    return;
+                }
+                if (state.bpEditingId) {
+                    const rec = state.bpRecords.find(r => r.id === state.bpEditingId);
+                    if (rec) {
+                        Object.assign(rec, { date, time, systolic, diastolic, pulse, notes });
+                    }
+                    toast('Lectura de presion actualizada', 'success');
+                } else {
+                    state.bpRecords.push({
+                        id: generateBpId(), patientId: p.id,
+                        date, time, systolic, diastolic, pulse, notes,
+                        createdAt: new Date().toISOString()
+                    });
+                    toast('Lectura de presion guardada', 'success');
+                }
+                saveState();
+                clearBpForm();
+                renderBpRecords();
+                if (graphsModal && !graphsModal.classList.contains('closed')) renderBpAnalysis();
+            }
+
+            function startEditBpRecord(id) {
+                const rec = state.bpRecords.find(r => r.id === id);
+                if (!rec) return;
+                state.bpEditingId = id;
+                document.getElementById('bpRegDate').value = rec.date;
+                document.getElementById('bpRegTime').value = rec.time || '08:00';
+                document.getElementById('bpRegSystolic').value = rec.systolic;
+                document.getElementById('bpRegDiastolic').value = rec.diastolic;
+                document.getElementById('bpRegPulse').value = rec.pulse != null ? rec.pulse : '';
+                document.getElementById('bpRegNotes').value = rec.notes || '';
+                document.getElementById('bpAddBtn').innerHTML = 'Guardar cambios';
+                document.getElementById('bpCancelEditBtn').style.display = 'inline-flex';
+                document.getElementById('bpRegDate').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+
+            function deleteBpRecord(id) {
+                if (!confirm('¿Eliminar esta lectura de presion arterial?')) return;
+                state.bpRecords = state.bpRecords.filter(r => r.id !== id);
+                saveState();
+                renderBpRecords();
+                if (graphsModal && !graphsModal.classList.contains('closed')) renderBpAnalysis();
+                toast('Lectura eliminada', 'info');
+            }
+
+            // Igual que el historial de glucosa: se muestran solo las ultimas 5 por
+            // defecto, con un boton para desplegar el resto.
+            let bpHistoryExpanded = false;
+            const BP_HISTORY_COLLAPSED_COUNT = 5;
+
+            function renderBpRecords() {
+                const listEl = document.getElementById('bpRecordsList');
+                const countEl = document.getElementById('bpHistoryCount');
+                const toggleBtn = document.getElementById('bpToggleHistoryBtn');
+                if (!listEl) return;
+                const records = getCurrentPatientBpRecords();
+                if (countEl) countEl.textContent = String(records.length);
+                if (!records.length) {
+                    listEl.innerHTML = '<p class="med-empty">Aun no hay lecturas de presion arterial registradas.</p>';
+                    if (toggleBtn) toggleBtn.style.display = 'none';
+                    return;
+                }
+                const sortedDesc = [...records].sort((a, b) => bpRecordTimestamp(a) < bpRecordTimestamp(b) ? 1 : -1);
+                const sortedAsc = [...records].sort((a, b) => bpRecordTimestamp(a) > bpRecordTimestamp(b) ? 1 : -1);
+                const prevMap = new Map();
+                sortedAsc.forEach((rec, i) => prevMap.set(rec.id, i === 0 ? null : sortedAsc[i - 1]));
+                if (records.length > BP_HISTORY_COLLAPSED_COUNT) {
+                    if (toggleBtn) {
+                        toggleBtn.style.display = 'inline-flex';
+                        toggleBtn.textContent = bpHistoryExpanded ?
+                            'Mostrar solo las ultimas 5' : 'Mostrar todas las lecturas';
+                    }
+                } else if (toggleBtn) {
+                    toggleBtn.style.display = 'none';
+                }
+                const visible = bpHistoryExpanded ? sortedDesc : sortedDesc.slice(0, BP_HISTORY_COLLAPSED_COUNT);
+                const t = getBpThresholds();
+                listEl.innerHTML = `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:.88rem;">
+                    <thead><tr style="text-align:left;border-bottom:2px solid #dae8f2;">
+                        <th style="padding:6px 8px;">Fecha y hora</th>
+                        <th style="padding:6px 8px;">Sistolica</th>
+                        <th style="padding:6px 8px;">Diastolica</th>
+                        <th style="padding:6px 8px;">Pulso</th>
+                        <th style="padding:6px 8px;">Notas</th>
+                        <th style="padding:6px 8px;">Acciones</th>
+                    </tr></thead><tbody>` +
+                    visible.map(rec => {
+                        const prev = prevMap.get(rec.id);
+                        const sysCat = getBpCategory(rec.systolic, t.sys);
+                        const diaCat = getBpCategory(rec.diastolic, t.dia);
+                        const sysTrend = getBpTrend(rec.systolic, prev ? prev.systolic : null);
+                        const diaTrend = getBpTrend(rec.diastolic, prev ? prev.diastolic : null);
+                        return `<tr style="border-bottom:1px solid #eef4fa;">
+                            <td style="padding:6px 8px;white-space:nowrap;">${escapeHtml(rec.date)} ${escapeHtml(rec.time || '')}</td>
+                            <td style="padding:6px 8px;"><span class="bp-reading-badge bp-reading-${sysCat}" title="${BP_CATEGORY_LABELS[sysCat]}">${rec.systolic}</span>${bpTrendArrowHtml(sysTrend)}</td>
+                            <td style="padding:6px 8px;"><span class="bp-reading-badge bp-reading-${diaCat}" title="${BP_CATEGORY_LABELS[diaCat]}">${rec.diastolic}</span>${bpTrendArrowHtml(diaTrend)}</td>
+                            <td style="padding:6px 8px;">${rec.pulse != null ? rec.pulse : '-'}</td>
+                            <td style="padding:6px 8px;">${escapeHtml(rec.notes || '')}</td>
+                            <td style="padding:6px 8px;white-space:nowrap;">
+                                <button class="btn btn-outline btn-xs edit-bp-record" data-id="${rec.id}">Editar</button>
+                                <button class="btn btn-danger btn-xs delete-bp-record" data-id="${rec.id}">Eliminar</button>
+                            </td>
+                        </tr>`;
+                    }).join('') + '</tbody></table></div>';
+                listEl.querySelectorAll('.edit-bp-record').forEach(btn => {
+                    btn.addEventListener('click', () => startEditBpRecord(btn.dataset.id));
+                });
+                listEl.querySelectorAll('.delete-bp-record').forEach(btn => {
+                    btn.addEventListener('click', () => deleteBpRecord(btn.dataset.id));
+                });
+            }
+
+            function toggleBpHistoryExpanded() {
+                bpHistoryExpanded = !bpHistoryExpanded;
+                renderBpRecords();
+            }
+
+            // Estadisticas simples (min/mediana/max) para el panel de analisis y el PDF.
+            function computeBpStats(records) {
+                if (!records.length) return null;
+                const sys = records.map(r => r.systolic).filter(v => v != null);
+                const dia = records.map(r => r.diastolic).filter(v => v != null);
+                const pulse = records.map(r => r.pulse).filter(v => v != null);
+                function q(arr) {
+                    if (!arr.length) return null;
+                    const s = [...arr].sort((a, b) => a - b);
+                    return {
+                        min: s[0], max: s[s.length - 1],
+                        median: s[Math.floor((s.length - 1) / 2)],
+                        avg: s.reduce((a, b) => a + b, 0) / s.length,
+                        n: s.length
+                    };
+                }
+                return { sys: q(sys), dia: q(dia), pulse: q(pulse), n: records.length };
+            }
+
+            // Renderiza el panel de analisis de presion (dentro del modal de graficos
+            // clinicos): grafico de evolucion sistolica/diastolica + tarjetas de estadisticas.
+            // Se mantiene deliberadamente independiente de renderStatsAndCharts() (que
+            // solo trabaja con registros de glucosa) para que la presion se muestre
+            // aunque el paciente aun no tenga ninguna medicion de glucosa.
+            function renderBpAnalysis() {
+                const section = document.getElementById('bpAnalysisSection');
+                if (!section) return;
+                if (!isBpEnabledForCurrentPatient()) { section.style.display = 'none'; return; }
+                section.style.display = '';
+                let records = getCurrentPatientBpRecords();
+                if (state.filterStart) records = records.filter(r => r.date >= state.filterStart);
+                if (state.filterEnd) records = records.filter(r => r.date <= state.filterEnd);
+                const statsBox = document.getElementById('bpStatsGrid');
+                const stats = computeBpStats(records);
+                if (!stats) {
+                    if (statsBox) statsBox.innerHTML = '<p style="font-size:.85rem;color:#6a8aa5;">No hay lecturas de presion en el rango seleccionado.</p>';
+                } else if (statsBox) {
+                    const last = [...records].sort((a, b) => bpRecordTimestamp(a) > bpRecordTimestamp(b) ? -1 : 1)[0];
+                    statsBox.innerHTML = `
+                        <div class="bp-stat-card"><div class="bp-stat-value">${last.systolic}/${last.diastolic}</div><div class="bp-stat-label">Ultima lectura (mmHg)</div></div>
+                        <div class="bp-stat-card"><div class="bp-stat-value">${stats.sys.avg.toFixed(0)}/${stats.dia.avg.toFixed(0)}</div><div class="bp-stat-label">Media (mmHg)</div></div>
+                        <div class="bp-stat-card"><div class="bp-stat-value">${stats.sys.min}-${stats.sys.max}</div><div class="bp-stat-label">Rango sistolica</div></div>
+                        <div class="bp-stat-card"><div class="bp-stat-value">${stats.dia.min}-${stats.dia.max}</div><div class="bp-stat-label">Rango diastolica</div></div>
+                        <div class="bp-stat-card"><div class="bp-stat-value">${stats.n}</div><div class="bp-stat-label">Lecturas en el periodo</div></div>
+                    `;
+                }
+                const canvas = document.getElementById('bpChart');
+                if (!canvas || typeof Chart === 'undefined') return;
+                if (state.bpChartInstance) { state.bpChartInstance.destroy(); state.bpChartInstance = null; }
+                if (!records.length) return;
+                const sorted = [...records].sort((a, b) => bpRecordTimestamp(a) < bpRecordTimestamp(b) ? -1 : 1);
+                const labels = sorted.map(r => formatDate(r.date) + ' ' + (r.time || ''));
+                state.bpChartInstance = new Chart(canvas.getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels,
+                        datasets: [
+                            { label: 'Sistolica', data: sorted.map(r => r.systolic), borderColor: '#c0392b', backgroundColor: 'rgba(192,57,43,.1)', tension: .25 },
+                            { label: 'Diastolica', data: sorted.map(r => r.diastolic), borderColor: '#1e6f9f', backgroundColor: 'rgba(30,111,159,.1)', tension: .25 }
+                        ]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { position: 'top' } },
+                        scales: { y: { title: { display: true, text: 'mmHg' } } }
+                    }
+                });
             }
 
             const exerciseMap = {
@@ -8466,6 +9100,9 @@ function addMedicationLog(medId, omitida) {
                     if (raw) {
                         const parsed = JSON.parse(raw);
                         state.records = parsed.records || [];
+                        // Ausente en copias de seguridad anteriores a la integracion de presion
+                        // arterial: se trata igual que un archivo sin ninguna lectura de presion.
+                        state.bpRecords = Array.isArray(parsed.bpRecords) ? parsed.bpRecords : [];
                         state.weatherDataCache = parsed.weatherDataCache || {};
 
                         // ---- Migracion / carga de pacientes ----
@@ -8484,6 +9121,10 @@ function addMedicationLog(medId, omitida) {
                                 pregnancyCategory: p.pregnancyCategory || '',
                                 glucoseUnit: p.glucoseUnit || 'mgdl',
                                 customTarget: p.customTarget || null,
+                                // Ausente en exportaciones antiguas (anteriores a la integracion de
+                                // presion arterial): por defecto false, para no activar la seccion
+                                // sin que el usuario lo haya pedido.
+                                bpEnabled: !!p.bpEnabled,
                                 medicines: Array.isArray(p.medicines) ? p.medicines : [],
                                 medicationLog: Array.isArray(p.medicationLog) ? p.medicationLog : []
                             }));
@@ -8532,6 +9173,14 @@ function addMedicationLog(medId, omitida) {
                                 }
                             }
                         }
+                        // Igual que arriba para "records": toda lectura de presion sin
+                        // patientId (no deberia ocurrir salvo edicion manual del JSON) se
+                        // asigna al primer paciente para no perderla.
+                        for (const br of state.bpRecords) {
+                            if (!br.patientId) br.patientId = state.patients[0] ? state.patients[0].id : null;
+                            if (!br.time) br.time = '08:00';
+                            if (br.pulse !== undefined && br.pulse !== null) br.pulse = numericValue(br.pulse);
+                        }
                     } else {
                         // Primer uso del navegador: sin datos guardados. Se deja el
                         // listado de pacientes vacio; init() preguntara al usuario si
@@ -8571,6 +9220,7 @@ function addMedicationLog(medId, omitida) {
                         patients: state.patients,
                         currentPatientId: state.currentPatientId,
                         records: state.records,
+                        bpRecords: state.bpRecords,
                         weatherDataCache: state.weatherDataCache,
                     });
                     const ok = safeStorageSet('glucoseAppData', payload);
@@ -8634,6 +9284,8 @@ function addMedicationLog(medId, omitida) {
                 if (customTargetPct) customTargetPct.value = ct ? ct.tirTargetPct : '';
                 if (customTargetOwner) customTargetOwner.value = ct ? (ct.owner || 'user') : 'user';
                 updateCustomTargetVisibility();
+                const bpToggleEl = document.getElementById('bpEnabledToggle');
+                if (bpToggleEl) bpToggleEl.checked = !!(p && p.bpEnabled);
             }
 
             function updatePregnancyCategoryVisibility() {
@@ -8725,6 +9377,8 @@ function addMedicationLog(medId, omitida) {
                 renderMedicineCatalog();
                 renderMedicineLog();
                 renderMedCurrentSummary();
+                updateBpSectionVisibility();
+                renderBpRecords();
                 if (!graphsModal.classList.contains('closed')) {
                     resetFilters();
                 }
@@ -8745,6 +9399,8 @@ function addMedicationLog(medId, omitida) {
                 renderMedicineCatalog();
                 renderMedicineLog();
                 renderMedCurrentSummary();
+                updateBpSectionVisibility();
+                renderBpRecords();
                 toast('Nuevo paciente creado', 'success');
             }
 
@@ -8864,6 +9520,8 @@ function shiftSampleDatasetToToday(data) {
                 renderMedicineLog();
                 renderMedCurrentSummary();
                 showLastWeather();
+                updateBpSectionVisibility();
+                renderBpRecords();
             }
 
             async function loadSampleData(options = {}) {
@@ -8946,6 +9604,9 @@ function shiftSampleDatasetToToday(data) {
                 normalized.pregnancyCategory = patient.pregnancyCategory || '';
                 normalized.glucoseUnit = patient.glucoseUnit || 'mgdl';
                 normalized.customTarget = patient.customTarget || null;
+                // Ausente en archivos anteriores a la integracion de presion arterial: por
+                // defecto false (seccion oculta), nunca se activa sola al importar.
+                normalized.bpEnabled = !!patient.bpEnabled;
                 normalized.medicines = Array.isArray(patient.medicines) ? patient.medicines : [];
                 normalized.medicationLog = Array.isArray(patient.medicationLog) ? patient.medicationLog : [];
                 return normalized;
@@ -8974,6 +9635,8 @@ function shiftSampleDatasetToToday(data) {
                 renderMedicineLog();
                 renderMedCurrentSummary();
                 showLastWeather();
+                updateBpSectionVisibility();
+                renderBpRecords();
             }
 
             function importPatientJSON(file) {
@@ -8992,6 +9655,12 @@ function shiftSampleDatasetToToday(data) {
                             toast('Formato invalido: "records" debe ser una lista.', 'error');
                             return;
                         }
+                        // Ausente en archivos anteriores a la integracion de presion arterial:
+                        // se trata como una lista vacia, nunca como un error de formato.
+                        if (data.bpRecords !== undefined && !Array.isArray(data.bpRecords)) {
+                            toast('Formato invalido: "bpRecords" debe ser una lista.', 'error');
+                            return;
+                        }
 
                         const importedPatient = normalizePatientForImport(sourcePatient, true);
                         if (!importedPatient) return;
@@ -9008,14 +9677,21 @@ function shiftSampleDatasetToToday(data) {
                             moods: Array.isArray(record.moods) && record.moods.length > 0 ? record.moods : ['normal'],
                             dietContext: Array.isArray(record.dietContext) ? record.dietContext : []
                         }));
+                        const importedBpRecords = (data.bpRecords || []).map(record => ({
+                            ...record,
+                            patientId,
+                            time: record.time || '08:00'
+                        }));
                         if (matchingPatient) {
                             state.patients = state.patients.map(patient =>
                                 patient.id === patientId ? importedPatient : patient);
                             state.records = state.records.filter(record => record.patientId !== patientId);
+                            state.bpRecords = state.bpRecords.filter(record => record.patientId !== patientId);
                         } else {
                             state.patients.push(importedPatient);
                         }
                         state.records.push(...importedRecords);
+                        state.bpRecords.push(...importedBpRecords);
                         state.currentPatientId = patientId;
                         refreshPatientView();
                         if (patientSection) patientSection.open = true;
@@ -9040,6 +9716,7 @@ function shiftSampleDatasetToToday(data) {
                 if (!confirm(confirmMsg)) return;
                 const idToDelete = state.currentPatientId;
                 state.records = state.records.filter(r => r.patientId !== idToDelete);
+                state.bpRecords = state.bpRecords.filter(r => r.patientId !== idToDelete);
                 state.patients = state.patients.filter(pt => pt.id !== idToDelete);
                 state.currentPatientId = state.patients[0].id;
                 saveState();
@@ -9051,6 +9728,8 @@ function shiftSampleDatasetToToday(data) {
                 renderMedicineCatalog();
                 renderMedicineLog();
                 renderMedCurrentSummary();
+                updateBpSectionVisibility();
+                renderBpRecords();
                 toast('Paciente eliminado', 'success');
             }
 
@@ -9508,6 +10187,7 @@ function shiftSampleDatasetToToday(data) {
                 // aviso de "sin datos" (anadir paciente / cargar ejemplos) otra vez.
                 state.patients = [];
                 state.records = [];
+                state.bpRecords = [];
                 state.currentPatientId = null;
                 state.weatherDataCache = {};
                 saveState();
@@ -9519,6 +10199,8 @@ function shiftSampleDatasetToToday(data) {
                 renderMedicineLog();
                 renderMedCurrentSummary();
                 showLastWeather();
+                updateBpSectionVisibility();
+                renderBpRecords();
                 toast('Todos los datos se han borrado', 'info');
                 showNoPatientDataModal();
             }
@@ -10031,6 +10713,7 @@ function shiftSampleDatasetToToday(data) {
                     patients: state.patients,
                     currentPatientId: state.currentPatientId,
                     records: state.records,
+                    bpRecords: state.bpRecords,
                     location: {
                         lat: currentLat,
                         lon: currentLon,
@@ -10065,12 +10748,14 @@ function shiftSampleDatasetToToday(data) {
                     return;
                 }
                 const records = getCurrentPatientRecords();
+                const bpRecords = getCurrentPatientBpRecords();
                 const data = {
                     tipo: 'copia_seguridad_paciente',
                     version: '10.1',
                     exportedAt: new Date().toISOString(),
                     patient: p,
-                    records: records
+                    records: records,
+                    bpRecords: bpRecords
                 };
                 const patientLabel = (p.name || 'paciente')
                     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -10283,6 +10968,44 @@ function shiftSampleDatasetToToday(data) {
                 }
                 addTableSheet('Medicamentos', medicineRows, [{ wch: 18 }, { wch: 26 }, { wch: 20 }, { wch: 18 }, { wch: 16 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 18 }, { wch: 18 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 26 }]);
 
+                // Presion arterial (opcional, integrado desde HBP.html): solo se listan
+                // lecturas de pacientes con bpEnabled activo, en el mismo rango de fechas
+                // que el resto del export (state.filterStart/filterEnd).
+                const bpFiltered = state.bpRecords.filter(r => {
+                    if (state.filterStart && r.date < state.filterStart) return false;
+                    if (state.filterEnd && r.date > state.filterEnd) return false;
+                    return true;
+                });
+                const bpThresholdsXls = getBpThresholds();
+                const bpRows = [['Paciente', 'Fecha', 'Hora', 'Sistolica', 'Diastolica', 'Pulso', 'Categoria sistolica', 'Categoria diastolica', 'Notas']];
+                for (const patient of allPatients) {
+                    if (!patient.bpEnabled) continue;
+                    const patientBp = bpFiltered.filter(r => r.patientId === patient.id)
+                        .sort((a, b) => bpRecordTimestamp(a) < bpRecordTimestamp(b) ? -1 : 1);
+                    if (!patientBp.length) {
+                        bpRows.push([patient.name || '', '', '', '', '', '', '', '', '(sin lecturas en el periodo)']);
+                        continue;
+                    }
+                    for (const r of patientBp) {
+                        bpRows.push([
+                            patient.name || '',
+                            r.date || '',
+                            r.time || '',
+                            r.systolic ?? '',
+                            r.diastolic ?? '',
+                            r.pulse ?? '',
+                            BP_CATEGORY_LABELS[getBpCategory(r.systolic, bpThresholdsXls.sys)] || '',
+                            BP_CATEGORY_LABELS[getBpCategory(r.diastolic, bpThresholdsXls.dia)] || '',
+                            r.notes || ''
+                        ]);
+                    }
+                }
+                if (bpRows.length > 1) {
+                    addTableSheet('Presion arterial', bpRows, [
+                        { wch: 18 }, { wch: 14 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 20 }, { wch: 20 }, { wch: 30 }
+                    ]);
+                }
+
                 const allValues = records
                     .flatMap(r => [numericValue(r.glucoseBefore), numericValue(r.glucoseAfter), numericValue(r.glucoseNight)])
                     .filter(v => v !== null);
@@ -10469,6 +11192,13 @@ function shiftSampleDatasetToToday(data) {
                                 if (!Array.isArray(r.moods) || r.moods.length === 0) r.moods = ['normal'];
                                 if (!Array.isArray(r.dietContext)) r.dietContext = [];
                             }
+                            // Ausente en archivos anteriores a la integracion de presion
+                            // arterial: se sustituye por una lista vacia.
+                            state.bpRecords = Array.isArray(data.bpRecords) ? data.bpRecords : [];
+                            for (const br of state.bpRecords) {
+                                if (!br.patientId) br.patientId = state.currentPatientId;
+                                if (!br.time) br.time = '08:00';
+                            }
                             if (data.location && data.location.lat && data.location.lon) {
                                 currentLat = data.location.lat;
                                 currentLon = data.location.lon;
@@ -10497,6 +11227,20 @@ function shiftSampleDatasetToToday(data) {
                                 }
                             }
                             toast(`Fusionados ${added} registros nuevos`, 'info');
+                            // Fusion de lecturas de presion arterial (si el archivo las trae).
+                            if (Array.isArray(data.bpRecords)) {
+                                const existingBpIds = new Set(state.bpRecords.map(r => r.id));
+                                let addedBp = 0;
+                                for (const rec of data.bpRecords) {
+                                    if (!existingBpIds.has(rec.id)) {
+                                        if (!rec.time) rec.time = '08:00';
+                                        if (!rec.patientId) rec.patientId = fallbackPatientId;
+                                        state.bpRecords.push(rec);
+                                        addedBp++;
+                                    }
+                                }
+                                if (addedBp > 0) toast(`Fusionadas ${addedBp} lecturas de presion arterial`, 'info');
+                            }
                             if (Array.isArray(data.patients)) {
                                 const existingPatientIds = new Set(state.patients.map(p => p.id));
                                 for (const p of data.patients) {
@@ -10524,6 +11268,8 @@ function shiftSampleDatasetToToday(data) {
                         renderMedicineLog();
                         renderMedCurrentSummary();
                         showLastWeather();
+                        updateBpSectionVisibility();
+                        renderBpRecords();
                         toast('Datos importados correctamente', 'success');
                     } catch (err) {
                         toast('Error al leer el archivo JSON: ' + err.message, 'error');
@@ -11206,6 +11952,9 @@ function shiftSampleDatasetToToday(data) {
             function renderStatsAndCharts() {
                 const records = getFilteredRecords();
                 adviceContainer.innerHTML = '';
+                // Independiente de si hay o no registros de glucosa en el rango: la
+                // presion arterial es un modulo aparte (ver patient.bpEnabled).
+                renderBpAnalysis();
 
                 const chartAvailable = (typeof Chart !== 'undefined');
 
@@ -12155,6 +12904,8 @@ function shiftSampleDatasetToToday(data) {
                     hint: 'Identificacion, edad, grupo de referencia y periodo' },
                 { id: 'medicamentos', group: 'Paciente y tratamiento', label: 'Medicamentos',
                     hint: 'Medicacion activa y ultimas tomas' },
+                { id: 'presion', group: 'Paciente y tratamiento', label: 'Presion arterial',
+                    hint: 'Solo si esta activada para el paciente; estadisticas, grafico y ultimas lecturas' },
                 { id: 'estadisticas', group: 'Estadisticas', label: 'Estadisticas avanzadas',
                     hint: 'Global y por momento de medicion' },
                 { id: 'cajas', group: 'Estadisticas', label: 'Diagrama de cajas por momento de medicion',
@@ -12195,22 +12946,22 @@ function shiftSampleDatasetToToday(data) {
                     sections: PDF_ALL_IDS.filter(id => id !== 'registros') },
                 { id: 'consulta', group: 'Segun el nivel de detalle', label: 'Resumen para consulta',
                     desc: 'Para una revision de rutina: estadisticas, tiempo en rango, tendencias (incluida la glucosa antes del desayuno), calidad de los datos y problemas detectados. Sin clima, animo ni dieta.',
-                    sections: ['paciente', 'medicamentos', 'estadisticas', 'cajas', 'tir', 'g_glucosa', 'g_tendencia',
+                    sections: ['paciente', 'medicamentos', 'presion', 'estadisticas', 'cajas', 'tir', 'g_glucosa', 'g_tendencia',
                         'g_tir_semmes', 'calidad', 'confusion', 'problemas'] },
                 { id: 'minimo', group: 'Segun el nivel de detalle', label: 'Resumen minimo',
                     desc: 'Vista rapida: datos del paciente, medicacion, estadisticas y tiempo en rango. Util para adjuntar a un mensaje o a una derivacion.',
-                    sections: ['paciente', 'medicamentos', 'estadisticas', 'tir'] },
+                    sections: ['paciente', 'medicamentos', 'presion', 'estadisticas', 'tir'] },
                 { id: 'cambio_tratamiento', group: 'Segun el objetivo', label: 'Cambio de tratamiento',
                     desc: 'Para valorar el efecto de un cambio de medicacion: compara dos periodos e incluye lo necesario para interpretarlo (tomas omitidas, medicacion nueva y otros factores de confusion). Si aun no hay periodos definidos, la ventana te ayuda a prepararlos.',
-                    sections: ['paciente', 'medicamentos', 'estadisticas', 'cajas', 'tir', 'calidad', 'antes_despues',
+                    sections: ['paciente', 'medicamentos', 'presion', 'estadisticas', 'cajas', 'tir', 'calidad', 'antes_despues',
                         'confusion', 'conf_desglose', 'problemas'] },
                 { id: 'seguridad', group: 'Segun el objetivo', label: 'Episodios y seguridad',
                     desc: 'Para revisar hipoglucemias y episodios de riesgo: valores extremos, tiempo por debajo del rango, evolucion dia a dia, problemas detectados y las lecturas afectadas por factores de confusion.',
-                    sections: ['paciente', 'medicamentos', 'estadisticas', 'cajas', 'tir', 'g_glucosa', 'g_tir_dia',
+                    sections: ['paciente', 'medicamentos', 'presion', 'estadisticas', 'cajas', 'tir', 'g_glucosa', 'g_tir_dia',
                         'calidad', 'confusion', 'conf_desglose', 'conf_detalle', 'problemas'] },
                 { id: 'habitos', group: 'Segun el objetivo', label: 'Patrones y habitos',
                     desc: 'Para educacion diabetologica o dietetica: como influyen la comida, el animo, el clima, el sueno y la medicacion. Incluye el listado de registros, que recoge ejercicio, dieta y comentarios.',
-                    sections: ['paciente', 'medicamentos', 'estadisticas', 'cajas', 'tir', 'g_glucosa', 'g_periodo',
+                    sections: ['paciente', 'medicamentos', 'presion', 'estadisticas', 'cajas', 'tir', 'g_glucosa', 'g_periodo',
                         'g_tendencia', 'calidad', 'clima', 'animo', 'dieta', 'confusion', 'conf_desglose',
                         'conf_detalle', 'correlaciones', 'registros'] }
             ];
@@ -13350,6 +14101,48 @@ function shiftSampleDatasetToToday(data) {
                                         addText(`  ${fechaStr} - ${sanitizeForPDF(e.nombre)} - ${sanitizeForPDF(doseStr)}`, 9);
                                     }
                                 }
+                            }
+                        }
+                        y += 8;
+                    }
+
+                    if (want('presion') && currentPatientForPdf.bpEnabled) {
+                        const bpRecordsForPdf = state.bpRecords.filter(r => r.patientId === currentPatientForPdf.id);
+                        ensureSpace(24);
+                        doc.setFontSize(16);
+                        doc.setFont(undefined, 'bold');
+                        doc.text('Presion arterial', margin, y);
+                        y += 8;
+                        doc.setFontSize(11);
+                        doc.setFont(undefined, 'normal');
+                        if (!bpRecordsForPdf.length) {
+                            addText('No hay lecturas de presion arterial registradas para este paciente.', 11);
+                        } else {
+                            const stats = computeBpStats(bpRecordsForPdf);
+                            const sorted = [...bpRecordsForPdf].sort((a, b) => bpRecordTimestamp(a) > bpRecordTimestamp(b) ? -1 : 1);
+                            const last = sorted[0];
+                            addText(`Categorias (ESC/ESH 2023): optima <120/80, normal 120-129/80-84, normal-alta 130-139/85-89, hipertension 140-179/90-109, hipertension severa >=180/110.`, 9);
+                            y += 2;
+                            addText(`Ultima lectura: ${last.systolic}/${last.diastolic} mmHg (${sanitizeForPDF(formatDate(last.date))} ${last.time || ''})${last.pulse != null ? ', pulso ' + last.pulse + ' lpm' : ''}`, 11, 'bold');
+                            addText(`Media del periodo: ${stats.sys.avg.toFixed(0)}/${stats.dia.avg.toFixed(0)} mmHg  ·  Rango sistolica: ${stats.sys.min}-${stats.sys.max}  ·  Rango diastolica: ${stats.dia.min}-${stats.dia.max}  ·  Lecturas: ${stats.n}`, 10);
+                            // Grafico de evolucion (si el canvas del modal de analisis lo tiene renderizado)
+                            const bpCanvas = document.getElementById('bpChart');
+                            if (bpCanvas && bpCanvas.width > 0 && bpCanvas.height > 0) {
+                                try {
+                                    const bpImg = bpCanvas.toDataURL('image/png', 1.0);
+                                    y += 4;
+                                    ensureSpace(70);
+                                    const imgWidth = pageWidth - margin * 2;
+                                    const imgHeight = imgWidth * (bpCanvas.height / bpCanvas.width);
+                                    doc.addImage(bpImg, 'PNG', margin, y, imgWidth, Math.min(imgHeight, 90));
+                                    y += Math.min(imgHeight, 90) + 6;
+                                } catch (e) { console.warn('No se pudo incluir el grafico de presion en el PDF:', e); }
+                            }
+                            y += 2;
+                            addText('Ultimas lecturas:', 10, 'bold');
+                            const recentBp = sorted.slice(0, 8);
+                            for (const r of recentBp) {
+                                addText(`  ${sanitizeForPDF(formatDate(r.date))} ${r.time || ''} - ${r.systolic}/${r.diastolic} mmHg${r.pulse != null ? ', pulso ' + r.pulse : ''}${r.notes ? ' - ' + sanitizeForPDF(r.notes) : ''}`, 9);
                             }
                         }
                         y += 8;
@@ -15122,9 +15915,6 @@ function shiftSampleDatasetToToday(data) {
             if (recordMedicineSearch) {
                 recordMedicineSearch.addEventListener('input', renderRecordMedicineCatalog);
             }
-            if (medReloadBtn) {
-                medReloadBtn.addEventListener('click', loadMedicineCatalogAuto);
-            }
             if (medBrowseBtn) {
                 medBrowseBtn.addEventListener('click', () => medFileInput.click());
             }
@@ -15135,6 +15925,50 @@ function shiftSampleDatasetToToday(data) {
                     loadMedicineCatalogFromFile(file);
                 });
             }
+            // ---- Panel de descarga CIMA on-demand (integrado desde HBP.html) ----
+            if (cimaFilterMode) {
+                populateCategorySelector();
+                cimaFilterMode.addEventListener('change', () => {
+                    const mode = cimaFilterMode.value;
+                    if (mode === 'ATC') {
+                        cimaAtcGroup.style.display = '';
+                        cimaCategoryGroup.style.display = 'none';
+                    } else {
+                        cimaAtcGroup.style.display = 'none';
+                        cimaCategoryGroup.style.display = '';
+                        updateCategoryGroupsHint();
+                    }
+                });
+            }
+            if (cimaCategoryFilter) cimaCategoryFilter.addEventListener('change', updateCategoryGroupsHint);
+            if (cimaDownloadBtn) {
+                cimaDownloadBtn.addEventListener('click', () => {
+                    const mode = cimaFilterMode.value;
+                    const filter = mode === 'ATC' ? cimaAtcFilter.value : cimaCategoryFilter.value;
+                    if (mode === 'ATC' && filter === 'ALL') {
+                        if (!confirm('Vas a descargar el catalogo COMPLETO de CIMA (~15.000 medicamentos).\n\nEsto puede tardar varios minutos.\n\n¿Continuar?')) return;
+                    }
+                    downloadCatalogFromCima(mode, filter);
+                });
+            }
+            if (cimaCancelBtn) {
+                cimaCancelBtn.addEventListener('click', () => {
+                    if (cimaDownloadAbort) cimaDownloadAbort.abort();
+                });
+            }
+            if (cimaLoadLocalBtn) cimaLoadLocalBtn.addEventListener('click', loadLocalCatalog);
+            if (cimaSaveJsonBtn) cimaSaveJsonBtn.addEventListener('click', saveCatalogToJson);
+            // ---- Presion arterial (opcional, integrado desde HBP.html) ----
+            const bpEnabledToggle = $('bpEnabledToggle');
+            if (bpEnabledToggle) {
+                bpEnabledToggle.addEventListener('change', () => toggleBpEnabledForCurrentPatient(bpEnabledToggle.checked));
+            }
+            const bpAddBtn = $('bpAddBtn');
+            if (bpAddBtn) bpAddBtn.addEventListener('click', addOrUpdateBpRecord);
+            const bpCancelEditBtn = $('bpCancelEditBtn');
+            if (bpCancelEditBtn) bpCancelEditBtn.addEventListener('click', clearBpForm);
+            const bpToggleHistoryBtn = $('bpToggleHistoryBtn');
+            if (bpToggleHistoryBtn) bpToggleHistoryBtn.addEventListener('click', toggleBpHistoryExpanded);
 
             // ---------- INIT ----------
             // ---------- AVISO DE DIAS SIN REGISTRAR (al iniciar) ----------
@@ -15229,6 +16063,9 @@ function shiftSampleDatasetToToday(data) {
                 renderMoodSelector(['normal']);
                 renderRecords();
                 resetForm();
+                updateBpSectionVisibility();
+                renderBpRecords();
+                clearBpForm();
                 updateWeatherDisplay();
                 updateWeatherDisplayCount();
 
@@ -15249,9 +16086,9 @@ function shiftSampleDatasetToToday(data) {
                 renderMedicineCatalog();
                 renderMedicineLog();
                 renderMedCurrentSummary();
-                updateMedCatalogStatus('Catalogo: cargando...');
-                // Carga automatica del catalogo CIMA
-                setTimeout(() => { loadMedicineCatalogAuto(); }, 400);
+                // El catalogo CIMA ya NO se descarga automaticamente al cargar la app
+                // (ver panel "Medicamentos": descarga bajo demanda, igual que HBP.html).
+                updateMedCatalogStatus();
 
                 weatherCheckDate.value = todayStr();
                 if (manualWeatherDate) manualWeatherDate.value = todayStr();
